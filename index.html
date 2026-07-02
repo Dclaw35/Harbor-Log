@@ -20,8 +20,17 @@
           </span>
         </a>
         <nav class="top-actions" aria-label="Primary">
-          <button class="tool-button" data-action="new-entry" type="button" title="New log">+</button>
-          <button class="tool-button" data-action="focus-search" type="button" title="Search">Q</button>
+          <button class="tool-button" data-action="new-entry" type="button" title="New log" aria-label="New log">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"></path>
+            </svg>
+          </button>
+          <button class="tool-button" data-action="focus-search" type="button" title="Search" aria-label="Search">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m21 21-4.8-4.8"></path>
+              <circle cx="11" cy="11" r="6"></circle>
+            </svg>
+          </button>
           <button class="text-button light" data-action="open-backup" type="button">Backup</button>
         </nav>
       </header>
@@ -76,7 +85,12 @@
                 <span>Location</span>
                 <div class="inline-field">
                   <input id="entryLocation" type="text" autocomplete="off" placeholder="Home, car, work, shore...">
-                  <button class="tool-button soft" data-action="use-location" type="button" title="Use current location">@</button>
+                  <button class="tool-button soft" data-action="use-location" type="button" title="Use current location" aria-label="Use current location">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 21s7-5.4 7-12a7 7 0 0 0-14 0c0 6.6 7 12 7 12Z"></path>
+                      <circle cx="12" cy="9" r="2.3"></circle>
+                    </svg>
+                  </button>
                 </div>
               </label>
               <label class="field">
@@ -176,7 +190,11 @@
             <p class="eyebrow">Backup</p>
             <h2>Keep the log</h2>
           </div>
-          <button class="tool-button soft" value="cancel" title="Close">x</button>
+          <button class="tool-button soft" value="cancel" title="Close" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="backup-grid">
