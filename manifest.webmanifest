@@ -1,0 +1,17 @@
+{
+  "name": "Harbor Log",
+  "short_name": "Harbor Log",
+  "description": "A local-first mood journal with shelves, charts, and optional Google Drive backup.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3efe4",
+  "theme_color": "#153f46",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

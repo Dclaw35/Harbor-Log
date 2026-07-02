@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Harbor Log icon</title>
+  <desc id="desc">A brass harbor bookplate over a teal journal.</desc>
+  <rect width="512" height="512" rx="92" fill="#153f46"/>
+  <rect x="112" y="84" width="286" height="344" rx="22" fill="#fffaf0"/>
+  <path d="M145 84h56v344h-56z" fill="#466c86"/>
+  <rect x="184" y="150" width="170" height="72" rx="12" fill="#b58535"/>
+  <path d="M213 330c42-28 82-28 124 0" fill="none" stroke="#8b3f58" stroke-width="24" stroke-linecap="round"/>
+  <path d="M213 280h124" fill="none" stroke="#153f46" stroke-width="22" stroke-linecap="round"/>
+  <path d="M225 181h88" fill="none" stroke="#fffaf0" stroke-width="18" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#153f46">
+    <title>Harbor Log</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#journal" aria-label="Harbor Log home">
+          <span class="brand-mark" aria-hidden="true">HL</span>
+          <span class="brand-copy">
+            <span class="brand-title">Harbor Log</span>
+            <span class="brand-subtitle" id="storageStatus">Local-first journal</span>
+          </span>
+        </a>
+        <nav class="top-actions" aria-label="Primary">
+          <button class="tool-button" data-action="new-entry" type="button" title="New log">+</button>
+          <button class="tool-button" data-action="focus-search" type="button" title="Search">Q</button>
+          <button class="text-button light" data-action="open-backup" type="button">Backup</button>
+        </nav>
+      </header>
+
+      <main class="workspace" id="journal">
+        <section class="entry-panel" aria-labelledby="entryPanelTitle">
+          <div class="section-heading">
+            <p class="eyebrow">Logbook</p>
+            <h1 id="entryPanelTitle">New entry</h1>
+          </div>
+
+          <form id="entryForm" class="entry-form">
+            <input type="hidden" id="entryId">
+
+            <label class="field">
+              <span>Title</span>
+              <input id="entryTitle" type="text" maxlength="90" autocomplete="off" placeholder="Name this moment">
+            </label>
+
+            <div class="field-grid two">
+              <label class="field">
+                <span>Date and time</span>
+                <input id="entryDateTime" type="datetime-local" required>
+              </label>
+              <label class="field">
+                <span>Mood</span>
+                <select id="entryMood" required>
+                  <option value="steady">Steady</option>
+                  <option value="low">Low</option>
+                  <option value="angry">Angry</option>
+                  <option value="anxious">Anxious</option>
+                  <option value="sad">Sad</option>
+                  <option value="tender">Tender</option>
+                  <option value="hopeful">Hopeful</option>
+                  <option value="bright">Bright</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="field range-field">
+              <span>Intensity <strong id="intensityValue">5</strong></span>
+              <input id="entryIntensity" type="range" min="1" max="10" value="5">
+            </label>
+
+            <label class="field">
+              <span>Entry</span>
+              <textarea id="entryBody" rows="10" required placeholder="What happened, what you felt, what you need now..."></textarea>
+            </label>
+
+            <div class="field-grid two">
+              <label class="field">
+                <span>Location</span>
+                <div class="inline-field">
+                  <input id="entryLocation" type="text" autocomplete="off" placeholder="Home, car, work, shore...">
+                  <button class="tool-button soft" data-action="use-location" type="button" title="Use current location">@</button>
+                </div>
+              </label>
+              <label class="field">
+                <span>People</span>
+                <input id="entryPeople" type="text" autocomplete="off" placeholder="Names, comma separated">
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Tags</span>
+              <input id="entryTags" type="text" autocomplete="off" placeholder="family, sleep, money, repair...">
+            </label>
+
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Save log</button>
+              <button class="text-button" data-action="reset-form" type="button">Clear</button>
+              <button class="danger-button hidden" data-action="delete-entry" type="button">Delete</button>
+            </div>
+            <p class="micro-status" id="formStatus" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="library-panel" aria-labelledby="libraryTitle">
+          <div class="cabinet-top">
+            <div class="section-heading">
+              <p class="eyebrow">Cabinet</p>
+              <h2 id="libraryTitle">Shelves and folders</h2>
+            </div>
+            <div class="segmented" aria-label="Library view">
+              <button class="segment active" data-view="shelf" type="button">Shelf</button>
+              <button class="segment" data-view="drawer" type="button">Drawer</button>
+            </div>
+          </div>
+
+          <div class="filter-row">
+            <label class="search-field">
+              <span class="sr-only">Search logs</span>
+              <input id="searchInput" type="search" autocomplete="off" placeholder="Search entries, tags, people, places">
+            </label>
+            <select id="moodFilter" aria-label="Filter by mood">
+              <option value="">All moods</option>
+              <option value="low">Low</option>
+              <option value="angry">Angry</option>
+              <option value="anxious">Anxious</option>
+              <option value="sad">Sad</option>
+              <option value="tender">Tender</option>
+              <option value="steady">Steady</option>
+              <option value="hopeful">Hopeful</option>
+              <option value="bright">Bright</option>
+            </select>
+          </div>
+
+          <div class="library-wrap">
+            <div id="shelfView" class="shelf-view" aria-live="polite"></div>
+            <div id="drawerView" class="drawer-view hidden" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section class="insights-panel" aria-labelledby="insightsTitle">
+          <div class="section-heading">
+            <p class="eyebrow">Charts</p>
+            <h2 id="insightsTitle">Mood weather</h2>
+          </div>
+          <div id="statsGrid" class="stats-grid" aria-label="Journal statistics"></div>
+
+          <div class="chart-block trend-block">
+            <div class="chart-heading">
+              <h3>Mood over time</h3>
+              <span id="trendRange"></span>
+            </div>
+            <div id="trendChart" class="chart-surface"></div>
+          </div>
+
+          <div class="chart-block">
+            <div class="chart-heading">
+              <h3>Locations</h3>
+              <span>Average mood</span>
+            </div>
+            <div id="locationChart" class="bar-list"></div>
+          </div>
+
+          <div class="chart-block">
+            <div class="chart-heading">
+              <h3>Tags</h3>
+              <span>Count and mood</span>
+            </div>
+            <div id="tagChart" class="tag-cloud"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="backupDialog" class="backup-dialog">
+      <form method="dialog" class="dialog-frame">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Backup</p>
+            <h2>Keep the log</h2>
+          </div>
+          <button class="tool-button soft" value="cancel" title="Close">x</button>
+        </div>
+
+        <div class="backup-grid">
+          <section class="backup-section">
+            <h3>Files</h3>
+            <div class="button-row">
+              <button class="text-button" data-action="export-json" type="button">Export JSON</button>
+              <label class="file-button">Import JSON<input id="importFile" type="file" accept="application/json,.json"></label>
+            </div>
+          </section>
+
+          <section class="backup-section">
+            <h3>Google Drive</h3>
+            <label class="field">
+              <span>OAuth client ID</span>
+              <input id="googleClientId" type="text" autocomplete="off" placeholder="Paste a Google web client ID">
+            </label>
+            <div class="button-row">
+              <button class="text-button" data-action="save-settings" type="button">Save settings</button>
+              <button class="text-button" data-action="drive-push" type="button">Back up to Drive</button>
+              <button class="text-button" data-action="drive-pull" type="button">Merge from Drive</button>
+            </div>
+          </section>
+
+          <section class="backup-section">
+            <h3>Browser storage</h3>
+            <div class="button-row">
+              <button class="text-button" data-action="persist-storage" type="button">Protect storage</button>
+            </div>
+          </section>
+        </div>
+        <p class="micro-status" id="backupStatus" role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <template id="emptyTemplate">
+      <div class="empty-state">
+        <div class="empty-book" aria-hidden="true"></div>
+        <h3>No logs yet</h3>
+        <p>The first book opens when you save an entry.</p>
+      </div>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
