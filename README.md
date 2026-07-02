@@ -58,12 +58,22 @@ The backup file is named harbor-log-backup.json and is stored in Google Drive's 
 
 ## GitHub Pages
 
-After the GitHub connector has access to the repo, or after you push this folder yourself:
+The repository is set up for GitHub Pages because the app is plain HTML, CSS,
+and JavaScript.
 
-1. Open the repository settings.
-2. Go to Pages.
-3. Publish from the main branch root.
-4. Use the published URL as an authorized JavaScript origin in Google Cloud.
+1. Open `https://github.com/Dclaw35/Harbor-Log/settings/pages`.
+2. Under **Build and deployment**, choose **Deploy from a branch**.
+3. Set the branch to `main` and the folder to `/ (root)`.
+4. Save.
+
+After GitHub finishes publishing, the app should be available at:
+
+```text
+https://dclaw35.github.io/Harbor-Log/
+```
+
+Use that published URL as an authorized JavaScript origin in Google Cloud if
+you enable Google Drive backup.
 
 ## Privacy notes
 
