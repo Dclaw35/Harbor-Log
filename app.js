@@ -18,14 +18,14 @@ const moods = {
 };
 
 const bookPalette = ["#153f46", "#466c86", "#8b3f58", "#668a5b", "#b58535", "#3f7f73", "#c46f7e"];
-const ROOMS = ["write", "library", "insights"];
+const ROOMS = ["home", "write", "library", "insights"];
 
 const state = {
   db: null,
   entries: [],
   settings: { googleClientId: "", lastDriveSync: "", libraryView: "shelf" },
   filters: { query: "", mood: "" },
-  activeRoom: "write",
+  activeRoom: "home",
   activeEntryId: "",
   pendingNoteQuote: "",
   geo: null,
@@ -74,7 +74,7 @@ function bindEvents() {
 
 async function handleDocumentClick(event) {
   const actionTarget = event.target.closest("[data-action]");
-  const roomTarget = event.target.closest(".room-button[data-room], .brand[data-room]");
+  const roomTarget = event.target.closest(".room-button[data-room], .brand[data-room], .hero-action[data-room]");
   const viewTarget = event.target.closest("[data-view]");
   const entryTarget = event.target.closest("[data-entry-id]");
   if (roomTarget) { event.preventDefault(); await showRoom(roomTarget.dataset.room); return; }
@@ -154,7 +154,7 @@ function resetForm() {
 
 function roomFromHash() {
   const hash = (window.location.hash || "").replace("#", "");
-  return ROOMS.includes(hash) ? hash : "write";
+  return ROOMS.includes(hash) ? hash : "home";
 }
 
 function showRoom(room, options) {

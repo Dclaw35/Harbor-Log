@@ -7,12 +7,12 @@
     <title>Harbor Log</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=rooms">
+    <link rel="stylesheet" href="styles.css?v=hero1">
   </head>
-  <body data-room="write">
+  <body data-room="home">
     <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="#write" data-room="write" aria-label="Harbor Log home">
+        <a class="brand" href="#home" data-room="home" aria-label="Harbor Log home">
           <span class="brand-mark" aria-hidden="true">HL</span>
           <span class="brand-copy">
             <span class="brand-title">Harbor Log</span>
@@ -41,7 +41,19 @@
       </header>
 
       <main class="workspace app-stage" id="journal">
-        <section class="room write-room active" data-room-panel="write" aria-labelledby="entryPanelTitle">
+        <section class="room hero-room active" data-room-panel="home" aria-labelledby="heroTitle">
+          <div class="hero-copy">
+            <h1 id="heroTitle">Harbor Log</h1>
+            <p class="hero-subhead">A private harbor for turbulent days.</p>
+            <div class="hero-actions">
+              <button class="primary-button hero-action" data-room="write" type="button">Begin a log</button>
+              <button class="text-button light hero-action" data-room="library" type="button">Enter the library</button>
+            </div>
+          </div>
+          <div class="hero-threshold" aria-hidden="true"></div>
+        </section>
+
+        <section class="room write-room" data-room-panel="write" aria-labelledby="entryPanelTitle">
           <div class="writing-table">
             <section class="entry-panel" aria-labelledby="entryPanelTitle">
               <div class="section-heading">
@@ -303,6 +315,6 @@
       </div>
     </template>
 
-    <script src="app.js?v=notes2" defer></script>
+    <script src="app.js?v=hero1" defer></script>
   </body>
 </html>
