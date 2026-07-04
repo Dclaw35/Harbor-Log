@@ -18,12 +18,14 @@ const moods = {
 };
 
 const bookPalette = ["#153f46", "#466c86", "#8b3f58", "#668a5b", "#b58535", "#3f7f73", "#c46f7e"];
+const ROOMS = ["write", "library", "insights"];
 
 const state = {
   db: null,
   entries: [],
   settings: { googleClientId: "", lastDriveSync: "", libraryView: "shelf" },
   filters: { query: "", mood: "" },
+  activeRoom: "write",
   geo: null,
   tokenClient: null
 };
@@ -41,6 +43,7 @@ async function init() {
     state.settings = Object.assign({}, state.settings, await readSettings());
     state.entries = await readAllEntries();
     hydrateSettings();
+    setActiveRoom(roomFromHash(), { updateHash: false });
     setStatus("Ready. Stored in this browser.");
     await registerServiceWorker();
   } catch (error) {
@@ -52,12 +55,13 @@ async function init() {
 
 function collectElements() {
   Object.assign(els, {
-    entryForm: document.querySelector("#entryForm"), entryId: document.querySelector("#entryId"), entryTitle: document.querySelector("#entryTitle"), entryDateTime: document.querySelector("#entryDateTime"), entryMood: document.querySelector("#entryMood"), entryIntensity: document.querySelector("#entryIntensity"), intensityValue: document.querySelector("#intensityValue"), entryBody: document.querySelector("#entryBody"), entryLocation: document.querySelector("#entryLocation"), entryPeople: document.querySelector("#entryPeople"), entryTags: document.querySelector("#entryTags"), entryPanelTitle: document.querySelector("#entryPanelTitle"), formStatus: document.querySelector("#formStatus"), storageStatus: document.querySelector("#storageStatus"), searchInput: document.querySelector("#searchInput"), moodFilter: document.querySelector("#moodFilter"), shelfView: document.querySelector("#shelfView"), drawerView: document.querySelector("#drawerView"), statsGrid: document.querySelector("#statsGrid"), trendChart: document.querySelector("#trendChart"), trendRange: document.querySelector("#trendRange"), locationChart: document.querySelector("#locationChart"), tagChart: document.querySelector("#tagChart"), backupDialog: document.querySelector("#backupDialog"), backupStatus: document.querySelector("#backupStatus"), googleClientId: document.querySelector("#googleClientId"), importFile: document.querySelector("#importFile"), emptyTemplate: document.querySelector("#emptyTemplate")
+    entryForm: document.querySelector("#entryForm"), entryId: document.querySelector("#entryId"), entryTitle: document.querySelector("#entryTitle"), entryDateTime: document.querySelector("#entryDateTime"), entryMood: document.querySelector("#entryMood"), entryIntensity: document.querySelector("#entryIntensity"), intensityValue: document.querySelector("#intensityValue"), entryBody: document.querySelector("#entryBody"), entryLocation: document.querySelector("#entryLocation"), entryPeople: document.querySelector("#entryPeople"), entryTags: document.querySelector("#entryTags"), entryPanelTitle: document.querySelector("#entryPanelTitle"), formStatus: document.querySelector("#formStatus"), storageStatus: document.querySelector("#storageStatus"), searchInput: document.querySelector("#searchInput"), moodFilter: document.querySelector("#moodFilter"), shelfView: document.querySelector("#shelfView"), drawerView: document.querySelector("#drawerView"), statsGrid: document.querySelector("#statsGrid"), trendChart: document.querySelector("#trendChart"), trendRange: document.querySelector("#trendRange"), locationChart: document.querySelector("#locationChart"), tagChart: document.querySelector("#tagChart"), backupDialog: document.querySelector("#backupDialog"), backupStatus: document.querySelector("#backupStatus"), googleClientId: document.querySelector("#googleClientId"), importFile: document.querySelector("#importFile"), emptyTemplate: document.querySelector("#emptyTemplate"), roomFade: document.querySelector("#roomFade"), entryDialog: document.querySelector("#entryDialog"), entryDialogMood: document.querySelector("#entryDialogMood"), entryDialogTitle: document.querySelector("#entryDialogTitle"), entryDialogMeta: document.querySelector("#entryDialogMeta"), entryDialogBody: document.querySelector("#entryDialogBody"), entryDialogTags: document.querySelector("#entryDialogTags"), entryDialogEdit: document.querySelector("#entryDialogEdit")
   });
 }
 
 function bindEvents() {
   document.addEventListener("click", handleDocumentClick);
+  window.addEventListener("hashchange", function () { const room = roomFromHash(); if (room !== state.activeRoom) showRoom(room); });
   els.entryForm.addEventListener("submit", handleEntrySubmit);
   els.entryIntensity.addEventListener("input", function () { els.intensityValue.textContent = els.entryIntensity.value; });
   els.searchInput.addEventListener("input", function () { state.filters.query = els.searchInput.value.trim().toLowerCase(); renderLibrary(); });
@@ -67,21 +71,27 @@ function bindEvents() {
 
 async function handleDocumentClick(event) {
   const actionTarget = event.target.closest("[data-action]");
+  const roomTarget = event.target.closest(".room-button[data-room], .brand[data-room]");
   const viewTarget = event.target.closest("[data-view]");
   const entryTarget = event.target.closest("[data-entry-id]");
+  if (roomTarget) { event.preventDefault(); await showRoom(roomTarget.dataset.room); return; }
   if (viewTarget) { switchLibraryView(viewTarget.dataset.view); return; }
   if (entryTarget && !actionTarget) {
     const entry = state.entries.find(function (item) { return item.id === entryTarget.dataset.entryId; });
-    if (entry) loadEntryIntoForm(entry);
+    if (entry) openEntryDetail(entry);
     return;
   }
   if (!actionTarget) return;
   const action = actionTarget.dataset.action;
-  if (action === "new-entry") resetForm();
-  if (action === "focus-search") els.searchInput.focus();
+  if (action === "new-entry") { resetForm(); await showRoom("write"); }
+  if (action === "focus-search") { await showRoom("library"); window.requestAnimationFrame(function () { els.searchInput.focus(); }); }
   if (action === "reset-form") resetForm();
   if (action === "delete-entry") await deleteCurrentEntry();
   if (action === "use-location") await captureLocation();
+  if (action === "edit-open-entry") {
+    const entry = state.entries.find(function (item) { return item.id === actionTarget.dataset.entryId; });
+    if (entry) { closeEntryDialog(); loadEntryIntoForm(entry); await showRoom("write"); }
+  }
   if (action === "open-backup") openBackupDialog();
   if (action === "export-json") await exportJson();
   if (action === "save-settings") await saveSettingsFromDialog();
@@ -138,6 +148,69 @@ function resetForm() {
   els.entryForm.reset(); els.entryId.value = ""; els.entryMood.value = "steady"; els.entryIntensity.value = 5; els.intensityValue.textContent = "5"; els.entryPanelTitle.textContent = "New entry"; document.querySelector('[data-action="delete-entry"]').classList.add("hidden"); state.geo = null; setCurrentDateTime(); setFormStatus("");
 }
 
+function roomFromHash() {
+  const hash = (window.location.hash || "").replace("#", "");
+  return ROOMS.includes(hash) ? hash : "write";
+}
+
+function showRoom(room, options) {
+  if (!ROOMS.includes(room)) return Promise.resolve();
+  if (room === state.activeRoom) {
+    setActiveRoom(room, options || {});
+    return Promise.resolve();
+  }
+  const settings = options || {};
+  if (settings.transition === false || !els.roomFade) {
+    setActiveRoom(room, settings);
+    return Promise.resolve();
+  }
+  els.roomFade.classList.add("active");
+  return new Promise(function (resolve) {
+    window.setTimeout(function () {
+      setActiveRoom(room, settings);
+      window.scrollTo({ top: 0, behavior: "auto" });
+      window.setTimeout(function () {
+        els.roomFade.classList.remove("active");
+        resolve();
+      }, 130);
+    }, 230);
+  });
+}
+
+function setActiveRoom(room, options) {
+  if (!ROOMS.includes(room)) return;
+  state.activeRoom = room;
+  document.body.dataset.room = room;
+  document.querySelectorAll("[data-room-panel]").forEach(function (panel) { panel.classList.toggle("active", panel.dataset.roomPanel === room); });
+  document.querySelectorAll(".room-button").forEach(function (button) {
+    const isActive = button.dataset.room === room;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-current", isActive ? "page" : "false");
+  });
+  if (!options || options.updateHash !== false) history.replaceState(null, "", "#" + room);
+}
+
+function openEntryDetail(entry) {
+  if (!els.entryDialog) { loadEntryIntoForm(entry); showRoom("write"); return; }
+  const locationLabel = entry.location && entry.location.label ? entry.location.label : "Unplaced";
+  const people = entry.people && entry.people.length ? entry.people.join(", ") : "";
+  const meta = [formatDateTime(entry.createdAt), locationLabel, people].filter(Boolean);
+  els.entryDialogMood.textContent = moodLabel(entry.mood) + " " + entry.intensity + "/10";
+  els.entryDialogTitle.textContent = entry.title || defaultTitle(entry.createdAt);
+  els.entryDialogMeta.innerHTML = meta.map(function (item) { return "<span>" + escapeHtml(item) + "</span>"; }).join("");
+  els.entryDialogBody.textContent = entry.body || "";
+  els.entryDialogTags.innerHTML = (entry.tags || []).map(function (tag) { return "<span>#" + escapeHtml(tag) + "</span>"; }).join("");
+  els.entryDialogEdit.dataset.entryId = entry.id;
+  if (typeof els.entryDialog.showModal === "function") els.entryDialog.showModal();
+  else els.entryDialog.setAttribute("open", "open");
+}
+
+function closeEntryDialog() {
+  if (!els.entryDialog) return;
+  if (typeof els.entryDialog.close === "function" && els.entryDialog.open) els.entryDialog.close();
+  else els.entryDialog.removeAttribute("open");
+}
+
 function renderAll() { renderLibrary(); renderStats(); renderTrendChart(); renderLocationChart(); renderTagChart(); }
 function renderLibrary() { const entries = getFilteredEntries(); renderShelf(entries); renderDrawer(entries); applyLibraryView(); }
 
@@ -149,7 +222,7 @@ function renderShelf(entries) {
     const title = document.createElement("div"); title.className = "shelf-title"; title.innerHTML = "<h3>" + escapeHtml(group.label) + "</h3><span>" + group.entries.length + " logs</span>";
     const row = document.createElement("div"); row.className = "book-row";
     group.entries.forEach(function (entry, index) {
-      const button = document.createElement("button"); button.type = "button"; button.className = "book"; button.dataset.entryId = entry.id; button.style.setProperty("--book-color", getEntryColor(entry, index)); button.style.setProperty("--book-height", 84 + Math.min(54, entry.intensity * 6) + "px"); button.innerHTML = "<span class=\"book-title\">" + escapeHtml(entry.title) + "</span><span class=\"book-meta\">" + escapeHtml(moodLabel(entry.mood)) + "</span>"; row.append(button);
+      const button = document.createElement("button"); button.type = "button"; button.className = "book"; button.dataset.entryId = entry.id; button.dataset.mood = entry.mood; button.style.setProperty("--book-color", getEntryColor(entry, index)); button.style.setProperty("--book-height", 122 + Math.min(72, entry.intensity * 7) + "px"); button.innerHTML = "<span class=\"book-title\">" + escapeHtml(entry.title) + "</span><span class=\"book-meta\">" + escapeHtml(moodLabel(entry.mood)) + "</span>"; row.append(button);
     });
     shelf.append(title, row); els.shelfView.append(shelf);
   });

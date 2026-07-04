@@ -7,12 +7,12 @@
     <title>Harbor Log</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=cinema">
+    <link rel="stylesheet" href="styles.css?v=rooms">
   </head>
-  <body>
+  <body data-room="write">
     <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="#journal" aria-label="Harbor Log home">
+        <a class="brand" href="#write" data-room="write" aria-label="Harbor Log home">
           <span class="brand-mark" aria-hidden="true">HL</span>
           <span class="brand-copy">
             <span class="brand-title">Harbor Log</span>
@@ -20,6 +20,11 @@
           </span>
         </a>
         <nav class="top-actions" aria-label="Primary">
+          <div class="room-nav" aria-label="Rooms">
+            <button class="room-button active" data-room="write" type="button">Write</button>
+            <button class="room-button" data-room="library" type="button">Library</button>
+            <button class="room-button" data-room="insights" type="button">Insights</button>
+          </div>
           <button class="tool-button" data-action="new-entry" type="button" title="New log" aria-label="New log">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 5v14M5 12h14"></path>
@@ -35,153 +40,191 @@
         </nav>
       </header>
 
-      <main class="workspace" id="journal">
-        <section class="entry-panel" aria-labelledby="entryPanelTitle">
-          <div class="section-heading">
-            <p class="eyebrow">Logbook</p>
-            <h1 id="entryPanelTitle">New entry</h1>
-          </div>
+      <main class="workspace app-stage" id="journal">
+        <section class="room write-room active" data-room-panel="write" aria-labelledby="entryPanelTitle">
+          <div class="writing-table">
+            <section class="entry-panel" aria-labelledby="entryPanelTitle">
+              <div class="section-heading">
+                <p class="eyebrow">Logbook</p>
+                <h1 id="entryPanelTitle">New entry</h1>
+              </div>
 
-          <form id="entryForm" class="entry-form">
-            <input type="hidden" id="entryId">
+              <form id="entryForm" class="entry-form">
+                <input type="hidden" id="entryId">
 
-            <label class="field">
-              <span>Title</span>
-              <input id="entryTitle" type="text" maxlength="90" autocomplete="off" placeholder="Name this moment">
-            </label>
+                <label class="field">
+                  <span>Title</span>
+                  <input id="entryTitle" type="text" maxlength="90" autocomplete="off" placeholder="Name this moment">
+                </label>
 
-            <div class="field-grid two">
-              <label class="field">
-                <span>Date and time</span>
-                <input id="entryDateTime" type="datetime-local" required>
-              </label>
-              <label class="field">
-                <span>Mood</span>
-                <select id="entryMood" required>
-                  <option value="steady">Steady</option>
-                  <option value="low">Low</option>
-                  <option value="angry">Angry</option>
-                  <option value="anxious">Anxious</option>
-                  <option value="sad">Sad</option>
-                  <option value="tender">Tender</option>
-                  <option value="hopeful">Hopeful</option>
-                  <option value="bright">Bright</option>
-                </select>
-              </label>
-            </div>
-
-            <label class="field range-field">
-              <span>Intensity <strong id="intensityValue">5</strong></span>
-              <input id="entryIntensity" type="range" min="1" max="10" value="5">
-            </label>
-
-            <label class="field">
-              <span>Entry</span>
-              <textarea id="entryBody" rows="10" required placeholder="What happened, what you felt, what you need now..."></textarea>
-            </label>
-
-            <div class="field-grid two">
-              <label class="field">
-                <span>Location</span>
-                <div class="inline-field">
-                  <input id="entryLocation" type="text" autocomplete="off" placeholder="Home, car, work, shore...">
-                  <button class="tool-button soft" data-action="use-location" type="button" title="Use current location" aria-label="Use current location">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 21s7-5.4 7-12a7 7 0 0 0-14 0c0 6.6 7 12 7 12Z"></path>
-                      <circle cx="12" cy="9" r="2.3"></circle>
-                    </svg>
-                  </button>
+                <div class="field-grid two">
+                  <label class="field">
+                    <span>Date and time</span>
+                    <input id="entryDateTime" type="datetime-local" required>
+                  </label>
+                  <label class="field">
+                    <span>Mood</span>
+                    <select id="entryMood" required>
+                      <option value="steady">Steady</option>
+                      <option value="low">Low</option>
+                      <option value="angry">Angry</option>
+                      <option value="anxious">Anxious</option>
+                      <option value="sad">Sad</option>
+                      <option value="tender">Tender</option>
+                      <option value="hopeful">Hopeful</option>
+                      <option value="bright">Bright</option>
+                    </select>
+                  </label>
                 </div>
-              </label>
-              <label class="field">
-                <span>People</span>
-                <input id="entryPeople" type="text" autocomplete="off" placeholder="Names, comma separated">
-              </label>
-            </div>
 
-            <label class="field">
-              <span>Tags</span>
-              <input id="entryTags" type="text" autocomplete="off" placeholder="family, sleep, money, repair...">
-            </label>
+                <label class="field range-field">
+                  <span>Intensity <strong id="intensityValue">5</strong></span>
+                  <input id="entryIntensity" type="range" min="1" max="10" value="5">
+                </label>
 
-            <div class="form-actions">
-              <button class="primary-button" type="submit">Save log</button>
-              <button class="text-button" data-action="reset-form" type="button">Clear</button>
-              <button class="danger-button hidden" data-action="delete-entry" type="button">Delete</button>
-            </div>
-            <p class="micro-status" id="formStatus" role="status" aria-live="polite"></p>
-          </form>
+                <label class="field">
+                  <span>Entry</span>
+                  <textarea id="entryBody" rows="10" required placeholder="What happened, what you felt, what you need now..."></textarea>
+                </label>
+
+                <div class="field-grid two">
+                  <label class="field">
+                    <span>Location</span>
+                    <div class="inline-field">
+                      <input id="entryLocation" type="text" autocomplete="off" placeholder="Home, car, work, shore...">
+                      <button class="tool-button soft" data-action="use-location" type="button" title="Use current location" aria-label="Use current location">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 21s7-5.4 7-12a7 7 0 0 0-14 0c0 6.6 7 12 7 12Z"></path>
+                          <circle cx="12" cy="9" r="2.3"></circle>
+                        </svg>
+                      </button>
+                    </div>
+                  </label>
+                  <label class="field">
+                    <span>People</span>
+                    <input id="entryPeople" type="text" autocomplete="off" placeholder="Names, comma separated">
+                  </label>
+                </div>
+
+                <label class="field">
+                  <span>Tags</span>
+                  <input id="entryTags" type="text" autocomplete="off" placeholder="family, sleep, money, repair...">
+                </label>
+
+                <div class="form-actions">
+                  <button class="primary-button" type="submit">Save log</button>
+                  <button class="text-button" data-action="reset-form" type="button">Clear</button>
+                  <button class="danger-button hidden" data-action="delete-entry" type="button">Delete</button>
+                </div>
+                <p class="micro-status" id="formStatus" role="status" aria-live="polite"></p>
+              </form>
+            </section>
+            <aside class="desk-still-life" aria-hidden="true">
+              <div class="lamp-glow"></div>
+              <div class="stacked-pages"></div>
+              <div class="ink-well"></div>
+            </aside>
+          </div>
         </section>
 
-        <section class="library-panel" aria-labelledby="libraryTitle">
-          <div class="cabinet-top">
+        <section class="room library-room" data-room-panel="library" aria-labelledby="libraryTitle">
+          <section class="library-panel" aria-labelledby="libraryTitle">
+            <div class="cabinet-top">
+              <div class="section-heading">
+                <p class="eyebrow">The room</p>
+                <h2 id="libraryTitle">The Library</h2>
+              </div>
+              <div class="segmented" aria-label="Library view">
+                <button class="segment active" data-view="shelf" type="button">Shelf</button>
+                <button class="segment" data-view="drawer" type="button">Drawer</button>
+              </div>
+            </div>
+
+            <div class="filter-row">
+              <label class="search-field">
+                <span class="sr-only">Search logs</span>
+                <input id="searchInput" type="search" autocomplete="off" placeholder="Search entries, tags, people, places">
+              </label>
+              <select id="moodFilter" aria-label="Filter by mood">
+                <option value="">All moods</option>
+                <option value="low">Low</option>
+                <option value="angry">Angry</option>
+                <option value="anxious">Anxious</option>
+                <option value="sad">Sad</option>
+                <option value="tender">Tender</option>
+                <option value="steady">Steady</option>
+                <option value="hopeful">Hopeful</option>
+                <option value="bright">Bright</option>
+              </select>
+            </div>
+
+            <div class="library-wrap">
+              <div id="shelfView" class="shelf-view" aria-live="polite"></div>
+              <div id="drawerView" class="drawer-view hidden" aria-live="polite"></div>
+            </div>
+          </section>
+        </section>
+
+        <section class="room insights-room" data-room-panel="insights" aria-labelledby="insightsTitle">
+          <section class="insights-panel" aria-labelledby="insightsTitle">
             <div class="section-heading">
-              <p class="eyebrow">Cabinet</p>
-              <h2 id="libraryTitle">Shelves and folders</h2>
+              <p class="eyebrow">Charts</p>
+              <h2 id="insightsTitle">Mood weather</h2>
             </div>
-            <div class="segmented" aria-label="Library view">
-              <button class="segment active" data-view="shelf" type="button">Shelf</button>
-              <button class="segment" data-view="drawer" type="button">Drawer</button>
+            <div id="statsGrid" class="stats-grid" aria-label="Journal statistics"></div>
+
+            <div class="chart-block trend-block">
+              <div class="chart-heading">
+                <h3>Mood over time</h3>
+                <span id="trendRange"></span>
+              </div>
+              <div id="trendChart" class="chart-surface"></div>
             </div>
-          </div>
 
-          <div class="filter-row">
-            <label class="search-field">
-              <span class="sr-only">Search logs</span>
-              <input id="searchInput" type="search" autocomplete="off" placeholder="Search entries, tags, people, places">
-            </label>
-            <select id="moodFilter" aria-label="Filter by mood">
-              <option value="">All moods</option>
-              <option value="low">Low</option>
-              <option value="angry">Angry</option>
-              <option value="anxious">Anxious</option>
-              <option value="sad">Sad</option>
-              <option value="tender">Tender</option>
-              <option value="steady">Steady</option>
-              <option value="hopeful">Hopeful</option>
-              <option value="bright">Bright</option>
-            </select>
-          </div>
-
-          <div class="library-wrap">
-            <div id="shelfView" class="shelf-view" aria-live="polite"></div>
-            <div id="drawerView" class="drawer-view hidden" aria-live="polite"></div>
-          </div>
-        </section>
-
-        <section class="insights-panel" aria-labelledby="insightsTitle">
-          <div class="section-heading">
-            <p class="eyebrow">Charts</p>
-            <h2 id="insightsTitle">Mood weather</h2>
-          </div>
-          <div id="statsGrid" class="stats-grid" aria-label="Journal statistics"></div>
-
-          <div class="chart-block trend-block">
-            <div class="chart-heading">
-              <h3>Mood over time</h3>
-              <span id="trendRange"></span>
+            <div class="chart-block">
+              <div class="chart-heading">
+                <h3>Locations</h3>
+                <span>Average mood</span>
+              </div>
+              <div id="locationChart" class="bar-list"></div>
             </div>
-            <div id="trendChart" class="chart-surface"></div>
-          </div>
 
-          <div class="chart-block">
-            <div class="chart-heading">
-              <h3>Locations</h3>
-              <span>Average mood</span>
+            <div class="chart-block">
+              <div class="chart-heading">
+                <h3>Tags</h3>
+                <span>Count and mood</span>
+              </div>
+              <div id="tagChart" class="tag-cloud"></div>
             </div>
-            <div id="locationChart" class="bar-list"></div>
-          </div>
-
-          <div class="chart-block">
-            <div class="chart-heading">
-              <h3>Tags</h3>
-              <span>Count and mood</span>
-            </div>
-            <div id="tagChart" class="tag-cloud"></div>
-          </div>
+          </section>
         </section>
       </main>
     </div>
+
+    <div class="room-fade" id="roomFade" aria-hidden="true"></div>
+
+    <dialog id="entryDialog" class="entry-dialog">
+      <form method="dialog" class="entry-book">
+        <div class="entry-book-header">
+          <div>
+            <p class="eyebrow" id="entryDialogMood">Log</p>
+            <h2 id="entryDialogTitle">Untitled</h2>
+          </div>
+          <button class="tool-button soft" value="cancel" title="Close" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="entry-book-meta" id="entryDialogMeta"></div>
+        <article class="entry-book-body" id="entryDialogBody"></article>
+        <div class="entry-book-tags" id="entryDialogTags"></div>
+        <div class="entry-book-actions">
+          <button class="text-button" value="cancel">Return</button>
+          <button class="primary-button" id="entryDialogEdit" data-action="edit-open-entry" type="button">Edit log</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="backupDialog" class="backup-dialog">
       <form method="dialog" class="dialog-frame">
@@ -234,10 +277,10 @@
       <div class="empty-state">
         <div class="empty-book" aria-hidden="true"></div>
         <h3>No logs yet</h3>
-        <p>The first book opens when you save an entry.</p>
+        <p>The shelf is waiting.</p>
       </div>
     </template>
 
-    <script src="app.js" defer></script>
+    <script src="app.js?v=rooms2" defer></script>
   </body>
 </html>
