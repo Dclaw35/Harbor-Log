@@ -1458,7 +1458,8 @@ body[data-room="library"] .topbar {
 
 .entry-book {
   margin: 0;
-  overflow: hidden;
+  max-height: calc(100vh - 28px);
+  overflow: auto;
   border: 1px solid rgba(255, 255, 255, 0.44);
   border-radius: var(--radius);
   background:
@@ -1501,7 +1502,7 @@ body[data-room="library"] .topbar {
 
 .entry-book-body {
   min-height: 260px;
-  max-height: 46vh;
+  max-height: 34vh;
   margin: 18px 24px;
   overflow: auto;
   padding: 22px;
@@ -1514,8 +1515,107 @@ body[data-room="library"] .topbar {
   white-space: pre-wrap;
 }
 
+.body-highlight {
+  padding: 1px 3px;
+  border-radius: 4px;
+  background: rgba(230, 184, 108, 0.42);
+  box-shadow: 0 0 0 1px rgba(181, 133, 53, 0.18);
+}
+
+.annotation-panel {
+  display: grid;
+  gap: 12px;
+  margin: 18px 24px 0;
+  padding: 16px;
+  border: 1px solid rgba(19, 40, 45, 0.1);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(145deg, rgba(255, 250, 240, 0.82), rgba(236, 222, 199, 0.52));
+}
+
+.annotation-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.annotation-heading h3 {
+  font-size: 1.05rem;
+}
+
+.quote-preview {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--amber);
+  border-radius: var(--radius);
+  color: #25434a;
+  background: rgba(255, 255, 255, 0.6);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.quote-preview.empty {
+  color: #6b7a7e;
+  border-left-color: rgba(19, 40, 45, 0.14);
+}
+
+.note-field textarea {
+  min-height: 96px;
+}
+
+.annotation-actions {
+  justify-content: flex-end;
+}
+
+.entry-notes-list {
+  display: grid;
+  gap: 10px;
+}
+
+.empty-notes {
+  padding: 10px 0 0;
+  color: #6b7a7e;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.entry-note {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(19, 40, 45, 0.08);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.entry-note blockquote {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 4px solid rgba(188, 113, 128, 0.62);
+  color: #31585e;
+  background: rgba(188, 113, 128, 0.1);
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.entry-note p {
+  margin: 0;
+  color: #20363b;
+  line-height: 1.48;
+  white-space: pre-wrap;
+}
+
+.entry-note time {
+  color: #6b7a7e;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
 .entry-book-actions {
   justify-content: flex-end;
+  padding-top: 18px;
   padding-bottom: 22px;
 }
 
@@ -1598,6 +1698,7 @@ body[data-room="library"] .topbar {
   .entry-book-header,
   .entry-book-meta,
   .entry-book-tags,
+  .annotation-panel,
   .entry-book-actions {
     padding-inline: 16px;
   }
@@ -1605,5 +1706,15 @@ body[data-room="library"] .topbar {
   .entry-book-body {
     margin-inline: 16px;
     padding: 16px;
+  }
+
+  .annotation-panel {
+    margin-inline: 16px;
+  }
+
+  .annotation-heading,
+  .annotation-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

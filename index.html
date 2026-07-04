@@ -219,9 +219,31 @@
         <div class="entry-book-meta" id="entryDialogMeta"></div>
         <article class="entry-book-body" id="entryDialogBody"></article>
         <div class="entry-book-tags" id="entryDialogTags"></div>
+        <section class="annotation-panel" aria-labelledby="annotationTitle">
+          <div class="annotation-heading">
+            <div>
+              <p class="eyebrow">Notes</p>
+              <h3 id="annotationTitle">Annotations and addendums</h3>
+            </div>
+            <button class="text-button" data-action="capture-note-quote" type="button">Use selected text</button>
+          </div>
+          <div class="quote-preview empty" id="noteQuotePreview">No highlight selected.</div>
+          <label class="field note-field">
+            <span>Highlight text</span>
+            <input id="entryNoteQuote" type="text" autocomplete="off" placeholder="Optional exact text to highlight from the original log">
+          </label>
+          <label class="field note-field">
+            <span>Add a note</span>
+            <textarea id="entryNoteText" rows="3" placeholder="Add context, a later realization, or a note about the highlighted text..."></textarea>
+          </label>
+          <div class="button-row annotation-actions">
+            <button class="text-button" data-action="clear-note-quote" type="button">Clear highlight</button>
+            <button class="primary-button" data-action="save-entry-note" type="button">Save note</button>
+          </div>
+          <div class="entry-notes-list" id="entryNotesList"></div>
+        </section>
         <div class="entry-book-actions">
           <button class="text-button" value="cancel">Return</button>
-          <button class="primary-button" id="entryDialogEdit" data-action="edit-open-entry" type="button">Edit log</button>
         </div>
       </form>
     </dialog>
@@ -281,6 +303,6 @@
       </div>
     </template>
 
-    <script src="app.js?v=rooms2" defer></script>
+    <script src="app.js?v=notes2" defer></script>
   </body>
 </html>

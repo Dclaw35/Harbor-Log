@@ -26,6 +26,8 @@ const state = {
   settings: { googleClientId: "", lastDriveSync: "", libraryView: "shelf" },
   filters: { query: "", mood: "" },
   activeRoom: "write",
+  activeEntryId: "",
+  pendingNoteQuote: "",
   geo: null,
   tokenClient: null
 };
@@ -55,7 +57,7 @@ async function init() {
 
 function collectElements() {
   Object.assign(els, {
-    entryForm: document.querySelector("#entryForm"), entryId: document.querySelector("#entryId"), entryTitle: document.querySelector("#entryTitle"), entryDateTime: document.querySelector("#entryDateTime"), entryMood: document.querySelector("#entryMood"), entryIntensity: document.querySelector("#entryIntensity"), intensityValue: document.querySelector("#intensityValue"), entryBody: document.querySelector("#entryBody"), entryLocation: document.querySelector("#entryLocation"), entryPeople: document.querySelector("#entryPeople"), entryTags: document.querySelector("#entryTags"), entryPanelTitle: document.querySelector("#entryPanelTitle"), formStatus: document.querySelector("#formStatus"), storageStatus: document.querySelector("#storageStatus"), searchInput: document.querySelector("#searchInput"), moodFilter: document.querySelector("#moodFilter"), shelfView: document.querySelector("#shelfView"), drawerView: document.querySelector("#drawerView"), statsGrid: document.querySelector("#statsGrid"), trendChart: document.querySelector("#trendChart"), trendRange: document.querySelector("#trendRange"), locationChart: document.querySelector("#locationChart"), tagChart: document.querySelector("#tagChart"), backupDialog: document.querySelector("#backupDialog"), backupStatus: document.querySelector("#backupStatus"), googleClientId: document.querySelector("#googleClientId"), importFile: document.querySelector("#importFile"), emptyTemplate: document.querySelector("#emptyTemplate"), roomFade: document.querySelector("#roomFade"), entryDialog: document.querySelector("#entryDialog"), entryDialogMood: document.querySelector("#entryDialogMood"), entryDialogTitle: document.querySelector("#entryDialogTitle"), entryDialogMeta: document.querySelector("#entryDialogMeta"), entryDialogBody: document.querySelector("#entryDialogBody"), entryDialogTags: document.querySelector("#entryDialogTags"), entryDialogEdit: document.querySelector("#entryDialogEdit")
+    entryForm: document.querySelector("#entryForm"), entryId: document.querySelector("#entryId"), entryTitle: document.querySelector("#entryTitle"), entryDateTime: document.querySelector("#entryDateTime"), entryMood: document.querySelector("#entryMood"), entryIntensity: document.querySelector("#entryIntensity"), intensityValue: document.querySelector("#intensityValue"), entryBody: document.querySelector("#entryBody"), entryLocation: document.querySelector("#entryLocation"), entryPeople: document.querySelector("#entryPeople"), entryTags: document.querySelector("#entryTags"), entryPanelTitle: document.querySelector("#entryPanelTitle"), formStatus: document.querySelector("#formStatus"), storageStatus: document.querySelector("#storageStatus"), searchInput: document.querySelector("#searchInput"), moodFilter: document.querySelector("#moodFilter"), shelfView: document.querySelector("#shelfView"), drawerView: document.querySelector("#drawerView"), statsGrid: document.querySelector("#statsGrid"), trendChart: document.querySelector("#trendChart"), trendRange: document.querySelector("#trendRange"), locationChart: document.querySelector("#locationChart"), tagChart: document.querySelector("#tagChart"), backupDialog: document.querySelector("#backupDialog"), backupStatus: document.querySelector("#backupStatus"), googleClientId: document.querySelector("#googleClientId"), importFile: document.querySelector("#importFile"), emptyTemplate: document.querySelector("#emptyTemplate"), roomFade: document.querySelector("#roomFade"), entryDialog: document.querySelector("#entryDialog"), entryDialogMood: document.querySelector("#entryDialogMood"), entryDialogTitle: document.querySelector("#entryDialogTitle"), entryDialogMeta: document.querySelector("#entryDialogMeta"), entryDialogBody: document.querySelector("#entryDialogBody"), entryDialogTags: document.querySelector("#entryDialogTags"), entryNoteQuote: document.querySelector("#entryNoteQuote"), entryNoteText: document.querySelector("#entryNoteText"), noteQuotePreview: document.querySelector("#noteQuotePreview"), entryNotesList: document.querySelector("#entryNotesList")
   });
 }
 
@@ -66,6 +68,7 @@ function bindEvents() {
   els.entryIntensity.addEventListener("input", function () { els.intensityValue.textContent = els.entryIntensity.value; });
   els.searchInput.addEventListener("input", function () { state.filters.query = els.searchInput.value.trim().toLowerCase(); renderLibrary(); });
   els.moodFilter.addEventListener("change", function () { state.filters.mood = els.moodFilter.value; renderLibrary(); });
+  els.entryNoteQuote.addEventListener("input", function () { state.pendingNoteQuote = cleanQuote(els.entryNoteQuote.value); renderNoteQuotePreview(); });
   els.importFile.addEventListener("change", handleImportFile);
 }
 
@@ -88,10 +91,9 @@ async function handleDocumentClick(event) {
   if (action === "reset-form") resetForm();
   if (action === "delete-entry") await deleteCurrentEntry();
   if (action === "use-location") await captureLocation();
-  if (action === "edit-open-entry") {
-    const entry = state.entries.find(function (item) { return item.id === actionTarget.dataset.entryId; });
-    if (entry) { closeEntryDialog(); loadEntryIntoForm(entry); await showRoom("write"); }
-  }
+  if (action === "capture-note-quote") captureNoteQuote();
+  if (action === "clear-note-quote") setPendingNoteQuote("");
+  if (action === "save-entry-note") await saveEntryNote();
   if (action === "open-backup") openBackupDialog();
   if (action === "export-json") await exportJson();
   if (action === "save-settings") await saveSettingsFromDialog();
@@ -105,11 +107,12 @@ async function handleEntrySubmit(event) {
   if (!els.entryBody.value.trim()) { setFormStatus("Write the entry before saving."); return; }
   const now = new Date().toISOString();
   const existing = state.entries.find(function (entry) { return entry.id === els.entryId.value; });
+  if (existing) { setFormStatus("Saved logs are final. Open the book and add a note instead."); return; }
   const createdAt = fromLocalInput(els.entryDateTime.value).toISOString();
   const title = cleanText(els.entryTitle.value) || defaultTitle(createdAt);
   const locationLabel = cleanText(els.entryLocation.value) || "Unplaced";
   const entry = {
-    id: existing ? existing.id : createId(), createdAt: createdAt, updatedAt: now, deletedAt: "", title: title, body: els.entryBody.value.trim(), mood: els.entryMood.value, intensity: Number(els.entryIntensity.value), tags: parseList(els.entryTags.value), people: parseList(els.entryPeople.value), location: { label: locationLabel, lat: state.geo ? state.geo.lat : existing && existing.location ? existing.location.lat : null, lng: state.geo ? state.geo.lng : existing && existing.location ? existing.location.lng : null, accuracy: state.geo ? state.geo.accuracy : existing && existing.location ? existing.location.accuracy : null, source: state.geo ? "browser" : "manual" }, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "", utcOffsetMinutes: new Date(createdAt).getTimezoneOffset()
+    id: createId(), createdAt: createdAt, updatedAt: now, deletedAt: "", title: title, body: els.entryBody.value.trim(), mood: els.entryMood.value, intensity: Number(els.entryIntensity.value), tags: parseList(els.entryTags.value), people: parseList(els.entryPeople.value), notes: [], location: { label: locationLabel, lat: state.geo ? state.geo.lat : null, lng: state.geo ? state.geo.lng : null, accuracy: state.geo ? state.geo.accuracy : null, source: state.geo ? "browser" : "manual" }, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "", utcOffsetMinutes: new Date(createdAt).getTimezoneOffset()
   };
   await saveEntry(entry);
   state.geo = null;
@@ -141,7 +144,8 @@ async function captureLocation() {
 }
 
 function loadEntryIntoForm(entry) {
-  els.entryId.value = entry.id; els.entryTitle.value = entry.title || ""; els.entryDateTime.value = toLocalInput(entry.createdAt); els.entryMood.value = entry.mood || "steady"; els.entryIntensity.value = entry.intensity || 5; els.intensityValue.textContent = els.entryIntensity.value; els.entryBody.value = entry.body || ""; els.entryLocation.value = entry.location && entry.location.label ? entry.location.label : ""; els.entryPeople.value = (entry.people || []).join(", "); els.entryTags.value = (entry.tags || []).join(", "); els.entryPanelTitle.textContent = "Edit entry"; document.querySelector('[data-action="delete-entry"]').classList.remove("hidden"); setFormStatus("Opened " + formatDateTime(entry.createdAt) + "."); window.scrollTo({ top: 0, behavior: "smooth" });
+  openEntryDetail(entry);
+  setFormStatus("Saved logs are final. Add a note from the book view.");
 }
 
 function resetForm() {
@@ -191,24 +195,95 @@ function setActiveRoom(room, options) {
 }
 
 function openEntryDetail(entry) {
-  if (!els.entryDialog) { loadEntryIntoForm(entry); showRoom("write"); return; }
+  if (!els.entryDialog) return;
+  state.activeEntryId = entry.id;
+  state.pendingNoteQuote = "";
   const locationLabel = entry.location && entry.location.label ? entry.location.label : "Unplaced";
   const people = entry.people && entry.people.length ? entry.people.join(", ") : "";
   const meta = [formatDateTime(entry.createdAt), locationLabel, people].filter(Boolean);
   els.entryDialogMood.textContent = moodLabel(entry.mood) + " " + entry.intensity + "/10";
   els.entryDialogTitle.textContent = entry.title || defaultTitle(entry.createdAt);
   els.entryDialogMeta.innerHTML = meta.map(function (item) { return "<span>" + escapeHtml(item) + "</span>"; }).join("");
-  els.entryDialogBody.textContent = entry.body || "";
+  els.entryDialogBody.innerHTML = annotatedBodyHtml(entry);
   els.entryDialogTags.innerHTML = (entry.tags || []).map(function (tag) { return "<span>#" + escapeHtml(tag) + "</span>"; }).join("");
-  els.entryDialogEdit.dataset.entryId = entry.id;
-  if (typeof els.entryDialog.showModal === "function") els.entryDialog.showModal();
+  els.entryNoteQuote.value = "";
+  els.entryNoteText.value = "";
+  renderNoteQuotePreview();
+  renderEntryNotes(entry);
+  if (typeof els.entryDialog.showModal === "function" && !els.entryDialog.open) els.entryDialog.showModal();
   else els.entryDialog.setAttribute("open", "open");
 }
 
 function closeEntryDialog() {
   if (!els.entryDialog) return;
+  state.activeEntryId = "";
+  state.pendingNoteQuote = "";
   if (typeof els.entryDialog.close === "function" && els.entryDialog.open) els.entryDialog.close();
   else els.entryDialog.removeAttribute("open");
+}
+
+function captureNoteQuote() {
+  const selection = window.getSelection ? window.getSelection() : null;
+  if (!selection || !selection.rangeCount) { setPendingNoteQuote(""); return; }
+  const range = selection.getRangeAt(0);
+  const container = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+  if (!container || !els.entryDialogBody.contains(container)) { setPendingNoteQuote(""); return; }
+  setPendingNoteQuote(cleanQuote(selection.toString()));
+  selection.removeAllRanges();
+}
+
+function setPendingNoteQuote(quote) {
+  state.pendingNoteQuote = cleanQuote(quote).slice(0, 500);
+  if (els.entryNoteQuote) els.entryNoteQuote.value = state.pendingNoteQuote;
+  renderNoteQuotePreview();
+}
+
+function renderNoteQuotePreview() {
+  if (!els.noteQuotePreview) return;
+  if (!state.pendingNoteQuote) {
+    els.noteQuotePreview.textContent = "No highlight selected.";
+    els.noteQuotePreview.classList.add("empty");
+    return;
+  }
+  els.noteQuotePreview.textContent = state.pendingNoteQuote;
+  els.noteQuotePreview.classList.remove("empty");
+}
+
+async function saveEntryNote() {
+  const entry = state.entries.find(function (item) { return item.id === state.activeEntryId; });
+  if (!entry) return;
+  const noteText = cleanMultiline(els.entryNoteText.value);
+  const quote = cleanQuote(els.entryNoteQuote.value || state.pendingNoteQuote);
+  if (!noteText && !quote) { setStatus("Select text or write a note first."); return; }
+  const note = { id: createId(), createdAt: new Date().toISOString(), quote: quote, text: noteText || "Highlighted for later." };
+  const updated = normalizeEntry(Object.assign({}, entry, { notes: (entry.notes || []).concat(note), updatedAt: new Date().toISOString() }));
+  await saveEntry(updated);
+  openEntryDetail(updated);
+  setStatus("Note added to " + shortDate(updated.createdAt) + ".");
+}
+
+function renderEntryNotes(entry) {
+  const notes = entry.notes || [];
+  if (!els.entryNotesList) return;
+  if (!notes.length) {
+    els.entryNotesList.innerHTML = "<div class=\"empty-notes\">No notes yet.</div>";
+    return;
+  }
+  els.entryNotesList.innerHTML = notes.slice().sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); }).map(function (note) {
+    const quote = note.quote ? "<blockquote>" + escapeHtml(note.quote) + "</blockquote>" : "";
+    return "<article class=\"entry-note\">" + quote + "<p>" + escapeHtml(note.text) + "</p><time datetime=\"" + escapeHtml(note.createdAt) + "\">" + escapeHtml(formatDateTime(note.createdAt)) + "</time></article>";
+  }).join("");
+}
+
+function annotatedBodyHtml(entry) {
+  let html = escapeHtml(entry.body || "");
+  (entry.notes || []).filter(function (note) { return note.quote; }).forEach(function (note, index) {
+    const quote = escapeHtml(note.quote);
+    if (!quote) return;
+    const pattern = new RegExp(escapeRegExp(quote));
+    html = html.replace(pattern, "<mark class=\"body-highlight\" title=\"Annotated note " + (index + 1) + "\">" + quote + "</mark>");
+  });
+  return html;
 }
 
 function renderAll() { renderLibrary(); renderStats(); renderTrendChart(); renderLocationChart(); renderTagChart(); }
@@ -243,6 +318,7 @@ function entryCard(entry) {
   const button = document.createElement("button"); button.type = "button"; button.className = "entry-card"; button.dataset.entryId = entry.id; button.style.setProperty("--entry-color", moodColor(entry.mood));
   let pills = "<span class=\"pill mood-pill\">" + escapeHtml(moodLabel(entry.mood)) + " " + entry.intensity + "/10</span>";
   if (entry.location && entry.location.label) pills += "<span class=\"pill\">" + escapeHtml(entry.location.label) + "</span>";
+  if (entry.notes && entry.notes.length) pills += "<span class=\"pill\">" + entry.notes.length + " notes</span>";
   (entry.tags || []).slice(0, 4).forEach(function (tag) { pills += "<span class=\"pill\">#" + escapeHtml(tag) + "</span>"; });
   button.innerHTML = "<div class=\"entry-card-title\"><span>" + escapeHtml(entry.title) + "</span><time datetime=\"" + escapeHtml(entry.createdAt) + "\">" + escapeHtml(shortDate(entry.createdAt)) + "</time></div><p>" + escapeHtml(entry.body) + "</p><div class=\"pill-row\">" + pills + "</div>";
   return button;
@@ -336,7 +412,7 @@ async function driveFetch(token, url, options) { const requestOptions = options 
 function multipartBody(metadata, payload) { const boundary = "harbor_log_" + createId().replace(/[^a-zA-Z0-9]/g, ""); const value = ["--" + boundary, "Content-Type: application/json; charset=UTF-8", "", JSON.stringify(metadata), "--" + boundary, "Content-Type: application/json", "", JSON.stringify(payload, null, 2), "--" + boundary + "--", ""].join("\r\n"); return { contentType: "multipart/related; boundary=" + boundary, value: value }; }
 async function makeBackupPayload() { return { app: "Harbor Log", schemaVersion: 1, exportedAt: new Date().toISOString(), entries: state.entries, settings: { lastDriveSync: state.settings.lastDriveSync || "", libraryView: state.settings.libraryView || "shelf" } }; }
 async function mergePayload(payload) { if (!payload || !Array.isArray(payload.entries)) throw new Error("That file is not a Harbor Log backup."); let changed = 0; const byId = new Map(state.entries.map(function (entry) { return [entry.id, entry]; })); payload.entries.forEach(function (incoming) { if (!incoming.id || !incoming.updatedAt) return; const current = byId.get(incoming.id); if (!current || new Date(incoming.updatedAt) > new Date(current.updatedAt || 0)) { byId.set(incoming.id, normalizeEntry(incoming)); changed += 1; } }); state.entries = Array.from(byId.values()); await replaceAllEntries(state.entries); renderAll(); return { changed: changed }; }
-function normalizeEntry(entry) { return { id: String(entry.id), createdAt: entry.createdAt || new Date().toISOString(), updatedAt: entry.updatedAt || new Date().toISOString(), deletedAt: entry.deletedAt || "", title: entry.title || "Untitled", body: entry.body || "", mood: moods[entry.mood] ? entry.mood : "steady", intensity: Math.min(10, Math.max(1, Number(entry.intensity) || 5)), tags: Array.isArray(entry.tags) ? entry.tags.map(cleanText).filter(Boolean) : [], people: Array.isArray(entry.people) ? entry.people.map(cleanText).filter(Boolean) : [], location: { label: entry.location && entry.location.label ? entry.location.label : "Unplaced", lat: entry.location ? entry.location.lat : null, lng: entry.location ? entry.location.lng : null, accuracy: entry.location ? entry.location.accuracy : null, source: entry.location && entry.location.source ? entry.location.source : "manual" }, timeZone: entry.timeZone || "", utcOffsetMinutes: Number.isFinite(entry.utcOffsetMinutes) ? entry.utcOffsetMinutes : new Date(entry.createdAt || Date.now()).getTimezoneOffset() }; }
+function normalizeEntry(entry) { return { id: String(entry.id), createdAt: entry.createdAt || new Date().toISOString(), updatedAt: entry.updatedAt || new Date().toISOString(), deletedAt: entry.deletedAt || "", title: entry.title || "Untitled", body: entry.body || "", mood: moods[entry.mood] ? entry.mood : "steady", intensity: Math.min(10, Math.max(1, Number(entry.intensity) || 5)), tags: Array.isArray(entry.tags) ? entry.tags.map(cleanText).filter(Boolean) : [], people: Array.isArray(entry.people) ? entry.people.map(cleanText).filter(Boolean) : [], notes: normalizeNotes(entry.notes), location: { label: entry.location && entry.location.label ? entry.location.label : "Unplaced", lat: entry.location ? entry.location.lat : null, lng: entry.location ? entry.location.lng : null, accuracy: entry.location ? entry.location.accuracy : null, source: entry.location && entry.location.source ? entry.location.source : "manual" }, timeZone: entry.timeZone || "", utcOffsetMinutes: Number.isFinite(entry.utcOffsetMinutes) ? entry.utcOffsetMinutes : new Date(entry.createdAt || Date.now()).getTimezoneOffset() }; }
 async function requestPersistentStorage() { if (!navigator.storage || !navigator.storage.persist) { setBackupStatus("Persistent storage is unavailable here."); return; } const persisted = await navigator.storage.persist(); setBackupStatus(persisted ? "Browser storage protected." : "Browser storage unchanged."); }
 
 function openDatabase() { return new Promise(function (resolve, reject) { if (!window.indexedDB) { reject(new Error("IndexedDB is not available.")); return; } const request = indexedDB.open(DB_NAME, DB_VERSION); request.onupgradeneeded = function () { const db = request.result; if (!db.objectStoreNames.contains(ENTRY_STORE)) { const entries = db.createObjectStore(ENTRY_STORE, { keyPath: "id" }); entries.createIndex("createdAt", "createdAt"); entries.createIndex("updatedAt", "updatedAt"); } if (!db.objectStoreNames.contains(SETTINGS_STORE)) db.createObjectStore(SETTINGS_STORE, { keyPath: "id" }); }; request.onsuccess = function () { resolve(request.result); }; request.onerror = function () { reject(request.error); }; }); }
@@ -354,6 +430,9 @@ function fromLocalInput(value) { return value ? new Date(value) : new Date(); }
 function defaultTitle(iso) { return "Log " + formatDateTime(iso); }
 function parseList(value) { return Array.from(new Set(value.split(",").map(cleanText).filter(Boolean))).slice(0, 20); }
 function cleanText(value) { return String(value || "").trim().replace(/\s+/g, " "); }
+function cleanMultiline(value) { return String(value || "").replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); }
+function cleanQuote(value) { return cleanMultiline(value).replace(/\s+/g, " "); }
+function normalizeNotes(notes) { return Array.isArray(notes) ? notes.map(function (note) { return { id: note.id ? String(note.id) : createId(), createdAt: note.createdAt || new Date().toISOString(), quote: cleanQuote(note.quote || "").slice(0, 500), text: cleanMultiline(note.text || note.body || "").slice(0, 1800) || "Highlighted for later." }; }).filter(function (note) { return note.quote || note.text; }) : []; }
 function createId() { return crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2); }
 function roundCoord(value) { return Math.round(value * 100000) / 100000; }
 function moodScore(entry) { const base = moods[entry.mood] ? moods[entry.mood].score : 5; const intensity = Number(entry.intensity) || 5; return Math.min(10, Math.max(1, base * 0.65 + intensity * 0.35)); }
@@ -372,6 +451,7 @@ function setBackupStatus(message) { els.backupStatus.textContent = message; }
 function emptyNode() { return els.emptyTemplate.content.firstElementChild.cloneNode(true); }
 function miniEmpty(message) { return "<div class=\"empty-state\" style=\"min-height:180px\"><h3>" + escapeHtml(message) + "</h3></div>"; }
 function escapeHtml(value) { return String(value == null ? "" : value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+function escapeRegExp(value) { return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function softColor(color) { return "color-mix(in srgb, " + color + " 18%, #fffaf0)"; }
 function downloadJson(payload, filename) { const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); URL.revokeObjectURL(url); }
 function readableError(error) { const message = error && error.message ? error.message : String(error); if (message.includes("invalid_client")) return "Google rejected the client ID."; if (message.includes("popup")) return "Google sign-in was blocked."; if (message.length > 160) return "The Drive request failed."; return message; }
