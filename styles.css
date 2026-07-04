@@ -102,21 +102,16 @@ button {
 }
 
 .brand-mark {
-  display: grid;
+  display: block;
   flex: 0 0 44px;
   width: 44px;
   height: 44px;
-  place-items: center;
+  padding: 4px;
   border: 1px solid rgba(255, 255, 255, 0.42);
-  border-radius: 50%;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0)),
-    linear-gradient(135deg, var(--amber), var(--rose));
-  color: #fff9ed;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0;
-  box-shadow: 0 12px 30px rgba(230, 184, 108, 0.28);
+  border-radius: 14px;
+  background: rgba(255, 250, 240, 0.12);
+  object-fit: contain;
+  box-shadow: 0 12px 30px rgba(3, 14, 18, 0.28);
 }
 
 .brand-copy {
@@ -1206,6 +1201,21 @@ body[data-room="library"] .topbar {
     linear-gradient(180deg, transparent 62%, rgba(0, 0, 0, 0.54));
 }
 
+.hero-corner-mark {
+  position: absolute;
+  top: 26px;
+  left: 34px;
+  z-index: 1;
+  width: 68px;
+  height: 68px;
+  padding: 6px;
+  border: 1px solid rgba(255, 250, 240, 0.2);
+  border-radius: 20px;
+  background: rgba(255, 250, 240, 0.08);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.34);
+  object-fit: contain;
+}
+
 .hero-copy {
   position: relative;
   z-index: 1;
@@ -1751,6 +1761,14 @@ body[data-room="library"] .topbar {
 
   .hero-copy {
     min-height: calc(100vh - 36px);
+  }
+
+  .hero-corner-mark {
+    top: 18px;
+    left: 18px;
+    width: 58px;
+    height: 58px;
+    border-radius: 17px;
   }
 
   .hero-copy h1 {

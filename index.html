@@ -6,14 +6,15 @@
     <meta name="theme-color" content="#153f46">
     <title>Harbor Log</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=hero1">
+    <link rel="icon" href="assets/harbor-log-icon-32.png" type="image/png">
+    <link rel="apple-touch-icon" href="assets/harbor-log-icon-192.png">
+    <link rel="stylesheet" href="styles.css?v=icon1">
   </head>
   <body data-room="home">
     <div class="app-shell">
       <header class="topbar">
         <a class="brand" href="#home" data-room="home" aria-label="Harbor Log home">
-          <span class="brand-mark" aria-hidden="true">HL</span>
+          <img class="brand-mark" src="assets/harbor-log-icon-512.png" alt="" aria-hidden="true">
           <span class="brand-copy">
             <span class="brand-title">Harbor Log</span>
             <span class="brand-subtitle" id="storageStatus">Local-first journal</span>
@@ -42,6 +43,7 @@
 
       <main class="workspace app-stage" id="journal">
         <section class="room hero-room active" data-room-panel="home" aria-labelledby="heroTitle">
+          <img class="hero-corner-mark" src="assets/harbor-log-icon-512.png" alt="" aria-hidden="true">
           <div class="hero-copy">
             <h1 id="heroTitle">Harbor Log</h1>
             <p class="hero-subhead">A private harbor for turbulent days.</p>
