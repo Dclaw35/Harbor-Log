@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/harbor-log-icon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="assets/harbor-log-icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=icon1">
+    <link rel="stylesheet" href="styles.css?v=highend2">
   </head>
   <body data-room="home">
     <div class="app-shell">
@@ -37,7 +37,12 @@
               <circle cx="11" cy="11" r="6"></circle>
             </svg>
           </button>
-          <button class="text-button light" data-action="open-backup" type="button">Backup</button>
+          <button class="tool-button" data-action="open-command" type="button" title="Command palette" aria-label="Command palette">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h10M4 17h7"></path>
+            </svg>
+          </button>
+          <button class="text-button light" data-action="open-vault" type="button">Vault</button>
         </nav>
       </header>
 
@@ -45,10 +50,10 @@
         <section class="room hero-room active" data-room-panel="home" aria-labelledby="heroTitle">
           <img class="hero-corner-mark" src="assets/harbor-log-icon-512.png" alt="" aria-hidden="true">
           <div class="hero-copy">
-            <h1 id="heroTitle">Harbor Log</h1>
+            <h1 id="heroTitle" class="hero-script-title"><span>Harbor Log</span></h1>
             <p class="hero-subhead">A private harbor for turbulent days.</p>
             <div class="hero-actions">
-              <button class="primary-button hero-action" data-room="write" type="button">Begin a log</button>
+              <button class="primary-button hero-action" data-action="start-ritual" type="button">Begin a log</button>
               <button class="text-button light hero-action" data-room="library" type="button">Enter the library</button>
             </div>
           </div>
@@ -58,9 +63,12 @@
         <section class="room write-room" data-room-panel="write" aria-labelledby="entryPanelTitle">
           <div class="writing-table">
             <section class="entry-panel" aria-labelledby="entryPanelTitle">
-              <div class="section-heading">
-                <p class="eyebrow">Logbook</p>
-                <h1 id="entryPanelTitle">New entry</h1>
+              <div class="section-heading writing-heading">
+                <div>
+                  <p class="eyebrow">Logbook</p>
+                  <h1 id="entryPanelTitle">New entry</h1>
+                </div>
+                <button class="text-button settle-button" data-action="start-ritual" type="button">Settle</button>
               </div>
 
               <form id="entryForm" class="entry-form">
@@ -187,6 +195,14 @@
             </div>
             <div id="statsGrid" class="stats-grid" aria-label="Journal statistics"></div>
 
+            <section class="chart-block observation-block" aria-labelledby="observationsTitle">
+              <div class="chart-heading">
+                <h3 id="observationsTitle">Observations</h3>
+                <span>Private patterns</span>
+              </div>
+              <div id="observationGrid" class="observation-grid"></div>
+            </section>
+
             <div class="chart-block trend-block">
               <div class="chart-heading">
                 <h3>Mood over time</h3>
@@ -231,33 +247,70 @@
           </button>
         </div>
         <div class="entry-book-meta" id="entryDialogMeta"></div>
-        <article class="entry-book-body" id="entryDialogBody"></article>
         <div class="entry-book-tags" id="entryDialogTags"></div>
-        <section class="annotation-panel" aria-labelledby="annotationTitle">
-          <div class="annotation-heading">
-            <div>
-              <p class="eyebrow">Notes</p>
-              <h3 id="annotationTitle">Annotations and addendums</h3>
+        <div class="entry-reader-layout">
+          <article class="entry-book-body" id="entryDialogBody" aria-label="Final log text"></article>
+          <section class="annotation-panel" aria-labelledby="annotationTitle">
+            <div class="annotation-heading">
+              <div>
+                <p class="eyebrow">Notes</p>
+                <h3 id="annotationTitle">Annotations and addendums</h3>
+              </div>
+              <button class="text-button" data-action="capture-note-quote" type="button">Use selected text</button>
             </div>
-            <button class="text-button" data-action="capture-note-quote" type="button">Use selected text</button>
-          </div>
-          <div class="quote-preview empty" id="noteQuotePreview">No highlight selected.</div>
-          <label class="field note-field">
-            <span>Highlight text</span>
-            <input id="entryNoteQuote" type="text" autocomplete="off" placeholder="Optional exact text to highlight from the original log">
-          </label>
-          <label class="field note-field">
-            <span>Add a note</span>
-            <textarea id="entryNoteText" rows="3" placeholder="Add context, a later realization, or a note about the highlighted text..."></textarea>
-          </label>
-          <div class="button-row annotation-actions">
-            <button class="text-button" data-action="clear-note-quote" type="button">Clear highlight</button>
-            <button class="primary-button" data-action="save-entry-note" type="button">Save note</button>
-          </div>
-          <div class="entry-notes-list" id="entryNotesList"></div>
-        </section>
+            <div class="quote-preview empty" id="noteQuotePreview">No highlight selected.</div>
+            <fieldset class="note-type-grid" aria-label="Note type">
+              <label class="note-type-option">
+                <input type="radio" name="entryNoteType" value="addendum" checked>
+                <span>Addendum</span>
+              </label>
+              <label class="note-type-option">
+                <input type="radio" name="entryNoteType" value="pattern">
+                <span>Pattern</span>
+              </label>
+              <label class="note-type-option">
+                <input type="radio" name="entryNoteType" value="memory">
+                <span>Memory</span>
+              </label>
+              <label class="note-type-option">
+                <input type="radio" name="entryNoteType" value="question">
+                <span>Question</span>
+              </label>
+            </fieldset>
+            <label class="field note-field">
+              <span>Highlight text</span>
+              <input id="entryNoteQuote" type="text" autocomplete="off" placeholder="Optional exact text to highlight from the original log">
+            </label>
+            <label class="field note-field">
+              <span>Add a note</span>
+              <textarea id="entryNoteText" rows="3" placeholder="Add context, a later realization, or a note about the highlighted text..."></textarea>
+            </label>
+            <div class="button-row annotation-actions">
+              <button class="text-button" data-action="clear-note-quote" type="button">Clear highlight</button>
+              <button class="primary-button" data-action="save-entry-note" type="button">Save note</button>
+            </div>
+            <div class="entry-notes-list" id="entryNotesList"></div>
+          </section>
+        </div>
         <div class="entry-book-actions">
           <button class="text-button" value="cancel">Return</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="ritualDialog" class="ritual-dialog">
+      <form method="dialog" class="ritual-frame">
+        <div class="ritual-breath" aria-hidden="true">
+          <span></span>
+        </div>
+        <div class="ritual-copy">
+          <p class="eyebrow">Settle</p>
+          <h2>Come ashore for a moment.</h2>
+          <p id="ritualPrompt">Name one thing that is true right now.</p>
+        </div>
+        <div class="button-row ritual-actions">
+          <button class="text-button" data-action="ritual-skip" type="button">Skip</button>
+          <button class="primary-button" data-action="ritual-start-writing" type="button">Start writing</button>
         </div>
       </form>
     </dialog>
@@ -266,8 +319,8 @@
       <form method="dialog" class="dialog-frame">
         <div class="dialog-header">
           <div>
-            <p class="eyebrow">Backup</p>
-            <h2>Keep the log</h2>
+            <p class="eyebrow">Vault</p>
+            <h2>Private storage</h2>
           </div>
           <button class="tool-button soft" value="cancel" title="Close" aria-label="Close">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -275,6 +328,8 @@
             </svg>
           </button>
         </div>
+
+        <div id="vaultStatusGrid" class="vault-status-grid" aria-label="Storage status"></div>
 
         <div class="backup-grid">
           <section class="backup-section">
@@ -309,14 +364,28 @@
       </form>
     </dialog>
 
+    <dialog id="commandDialog" class="command-dialog">
+      <form method="dialog" class="command-frame">
+        <label class="command-search">
+          <span class="sr-only">Command search</span>
+          <input id="commandSearch" type="search" autocomplete="off" placeholder="Search Harbor Log">
+        </label>
+        <div id="commandList" class="command-list" role="listbox" aria-label="Commands"></div>
+      </form>
+    </dialog>
+
     <template id="emptyTemplate">
       <div class="empty-state">
         <div class="empty-book" aria-hidden="true"></div>
         <h3>No logs yet</h3>
         <p>The shelf is waiting.</p>
+        <div class="button-row empty-actions">
+          <button class="primary-button" data-action="start-ritual" type="button">Begin a log</button>
+          <button class="text-button" data-action="open-command" type="button">Open palette</button>
+        </div>
       </div>
     </template>
 
-    <script src="app.js?v=hero1" defer></script>
+    <script src="app.js?v=highend2" defer></script>
   </body>
 </html>

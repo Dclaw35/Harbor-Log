@@ -19,15 +19,30 @@ const moods = {
 
 const bookPalette = ["#153f46", "#466c86", "#8b3f58", "#668a5b", "#b58535", "#3f7f73", "#c46f7e"];
 const ROOMS = ["home", "write", "library", "insights"];
+const NOTE_TYPES = {
+  addendum: { label: "Addendum" },
+  pattern: { label: "Pattern" },
+  memory: { label: "Memory" },
+  question: { label: "Question" }
+};
+const ritualPrompts = [
+  "Name one thing that is true right now.",
+  "Let your shoulders drop before the first sentence.",
+  "Notice the room, the floor, and your next breath.",
+  "Write only what needs a place to land.",
+  "Start with the weather inside you."
+];
 
 const state = {
   db: null,
   entries: [],
-  settings: { googleClientId: "", lastDriveSync: "", libraryView: "shelf" },
+  settings: { googleClientId: "", lastDriveSync: "", lastExport: "", lastImport: "", libraryView: "shelf" },
   filters: { query: "", mood: "" },
   activeRoom: "home",
   activeEntryId: "",
   pendingNoteQuote: "",
+  commandItems: [],
+  selectedCommandIndex: 0,
   geo: null,
   tokenClient: null
 };
@@ -57,36 +72,47 @@ async function init() {
 
 function collectElements() {
   Object.assign(els, {
-    entryForm: document.querySelector("#entryForm"), entryId: document.querySelector("#entryId"), entryTitle: document.querySelector("#entryTitle"), entryDateTime: document.querySelector("#entryDateTime"), entryMood: document.querySelector("#entryMood"), entryIntensity: document.querySelector("#entryIntensity"), intensityValue: document.querySelector("#intensityValue"), entryBody: document.querySelector("#entryBody"), entryLocation: document.querySelector("#entryLocation"), entryPeople: document.querySelector("#entryPeople"), entryTags: document.querySelector("#entryTags"), entryPanelTitle: document.querySelector("#entryPanelTitle"), formStatus: document.querySelector("#formStatus"), storageStatus: document.querySelector("#storageStatus"), searchInput: document.querySelector("#searchInput"), moodFilter: document.querySelector("#moodFilter"), shelfView: document.querySelector("#shelfView"), drawerView: document.querySelector("#drawerView"), statsGrid: document.querySelector("#statsGrid"), trendChart: document.querySelector("#trendChart"), trendRange: document.querySelector("#trendRange"), locationChart: document.querySelector("#locationChart"), tagChart: document.querySelector("#tagChart"), backupDialog: document.querySelector("#backupDialog"), backupStatus: document.querySelector("#backupStatus"), googleClientId: document.querySelector("#googleClientId"), importFile: document.querySelector("#importFile"), emptyTemplate: document.querySelector("#emptyTemplate"), roomFade: document.querySelector("#roomFade"), entryDialog: document.querySelector("#entryDialog"), entryDialogMood: document.querySelector("#entryDialogMood"), entryDialogTitle: document.querySelector("#entryDialogTitle"), entryDialogMeta: document.querySelector("#entryDialogMeta"), entryDialogBody: document.querySelector("#entryDialogBody"), entryDialogTags: document.querySelector("#entryDialogTags"), entryNoteQuote: document.querySelector("#entryNoteQuote"), entryNoteText: document.querySelector("#entryNoteText"), noteQuotePreview: document.querySelector("#noteQuotePreview"), entryNotesList: document.querySelector("#entryNotesList")
+    entryForm: document.querySelector("#entryForm"), entryId: document.querySelector("#entryId"), entryTitle: document.querySelector("#entryTitle"), entryDateTime: document.querySelector("#entryDateTime"), entryMood: document.querySelector("#entryMood"), entryIntensity: document.querySelector("#entryIntensity"), intensityValue: document.querySelector("#intensityValue"), entryBody: document.querySelector("#entryBody"), entryLocation: document.querySelector("#entryLocation"), entryPeople: document.querySelector("#entryPeople"), entryTags: document.querySelector("#entryTags"), entryPanelTitle: document.querySelector("#entryPanelTitle"), formStatus: document.querySelector("#formStatus"), storageStatus: document.querySelector("#storageStatus"), searchInput: document.querySelector("#searchInput"), moodFilter: document.querySelector("#moodFilter"), shelfView: document.querySelector("#shelfView"), drawerView: document.querySelector("#drawerView"), statsGrid: document.querySelector("#statsGrid"), observationGrid: document.querySelector("#observationGrid"), trendChart: document.querySelector("#trendChart"), trendRange: document.querySelector("#trendRange"), locationChart: document.querySelector("#locationChart"), tagChart: document.querySelector("#tagChart"), backupDialog: document.querySelector("#backupDialog"), backupStatus: document.querySelector("#backupStatus"), vaultStatusGrid: document.querySelector("#vaultStatusGrid"), googleClientId: document.querySelector("#googleClientId"), importFile: document.querySelector("#importFile"), emptyTemplate: document.querySelector("#emptyTemplate"), roomFade: document.querySelector("#roomFade"), ritualDialog: document.querySelector("#ritualDialog"), ritualPrompt: document.querySelector("#ritualPrompt"), commandDialog: document.querySelector("#commandDialog"), commandSearch: document.querySelector("#commandSearch"), commandList: document.querySelector("#commandList"), entryDialog: document.querySelector("#entryDialog"), entryDialogMood: document.querySelector("#entryDialogMood"), entryDialogTitle: document.querySelector("#entryDialogTitle"), entryDialogMeta: document.querySelector("#entryDialogMeta"), entryDialogBody: document.querySelector("#entryDialogBody"), entryDialogTags: document.querySelector("#entryDialogTags"), entryNoteQuote: document.querySelector("#entryNoteQuote"), entryNoteText: document.querySelector("#entryNoteText"), entryNoteTypes: document.querySelectorAll('input[name="entryNoteType"]'), noteQuotePreview: document.querySelector("#noteQuotePreview"), entryNotesList: document.querySelector("#entryNotesList")
   });
 }
 
 function bindEvents() {
   document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("keydown", handleDocumentKeydown);
   window.addEventListener("hashchange", function () { const room = roomFromHash(); if (room !== state.activeRoom) showRoom(room); });
   els.entryForm.addEventListener("submit", handleEntrySubmit);
   els.entryIntensity.addEventListener("input", function () { els.intensityValue.textContent = els.entryIntensity.value; });
   els.searchInput.addEventListener("input", function () { state.filters.query = els.searchInput.value.trim().toLowerCase(); renderLibrary(); });
   els.moodFilter.addEventListener("change", function () { state.filters.mood = els.moodFilter.value; renderLibrary(); });
   els.entryNoteQuote.addEventListener("input", function () { state.pendingNoteQuote = cleanQuote(els.entryNoteQuote.value); renderNoteQuotePreview(); });
+  els.commandSearch.addEventListener("input", function () { state.selectedCommandIndex = 0; renderCommandPalette(); });
   els.importFile.addEventListener("change", handleImportFile);
 }
 
 async function handleDocumentClick(event) {
   const actionTarget = event.target.closest("[data-action]");
+  const commandTarget = event.target.closest("[data-command-index]");
+  const highlightTarget = event.target.closest(".body-highlight[data-note-id]");
+  const noteTarget = event.target.closest(".entry-note[data-note-id]");
   const roomTarget = event.target.closest(".room-button[data-room], .brand[data-room], .hero-action[data-room]");
   const viewTarget = event.target.closest("[data-view]");
   const entryTarget = event.target.closest("[data-entry-id]");
+  if (highlightTarget && !actionTarget) { event.preventDefault(); focusAnnotationPair(highlightTarget.dataset.noteId, "note"); return; }
+  if (noteTarget && !actionTarget) { event.preventDefault(); focusAnnotationPair(noteTarget.dataset.noteId, "highlight"); return; }
+  if (commandTarget) { event.preventDefault(); await executeCommand(Number(commandTarget.dataset.commandIndex)); return; }
   if (roomTarget) { event.preventDefault(); await showRoom(roomTarget.dataset.room); return; }
   if (viewTarget) { switchLibraryView(viewTarget.dataset.view); return; }
   if (entryTarget && !actionTarget) {
     const entry = state.entries.find(function (item) { return item.id === entryTarget.dataset.entryId; });
-    if (entry) openEntryDetail(entry);
+    if (entry) { animateEntryOpen(entryTarget); openEntryDetail(entry); }
     return;
   }
   if (!actionTarget) return;
   const action = actionTarget.dataset.action;
   if (action === "new-entry") { resetForm(); await showRoom("write"); }
+  if (action === "start-ritual") openRitualDialog();
+  if (action === "ritual-start-writing" || action === "ritual-skip") await finishRitual(action === "ritual-start-writing");
+  if (action === "open-command") openCommandPalette();
   if (action === "focus-search") { await showRoom("library"); window.requestAnimationFrame(function () { els.searchInput.focus(); }); }
   if (action === "reset-form") resetForm();
   if (action === "delete-entry") await deleteCurrentEntry();
@@ -94,12 +120,33 @@ async function handleDocumentClick(event) {
   if (action === "capture-note-quote") captureNoteQuote();
   if (action === "clear-note-quote") setPendingNoteQuote("");
   if (action === "save-entry-note") await saveEntryNote();
-  if (action === "open-backup") openBackupDialog();
+  if (action === "open-backup" || action === "open-vault") openBackupDialog();
   if (action === "export-json") await exportJson();
   if (action === "save-settings") await saveSettingsFromDialog();
   if (action === "drive-push") await pushToDrive();
   if (action === "drive-pull") await pullFromDrive();
   if (action === "persist-storage") await requestPersistentStorage();
+}
+
+async function handleDocumentKeydown(event) {
+  const key = event.key;
+  if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === "k") {
+    event.preventDefault();
+    openCommandPalette();
+    return;
+  }
+  if (els.commandDialog && els.commandDialog.open) {
+    if (key === "Escape") { closeCommandPalette(); return; }
+    if (key === "ArrowDown") { event.preventDefault(); moveCommandSelection(1); return; }
+    if (key === "ArrowUp") { event.preventDefault(); moveCommandSelection(-1); return; }
+    if (key === "Enter") { event.preventDefault(); await executeCommand(state.selectedCommandIndex); return; }
+  }
+  const annotationTarget = event.target.closest ? event.target.closest(".body-highlight[data-note-id], .entry-note[data-note-id]") : null;
+  if (annotationTarget && (key === "Enter" || key === " ")) {
+    event.preventDefault();
+    const direction = annotationTarget.classList.contains("body-highlight") ? "note" : "highlight";
+    focusAnnotationPair(annotationTarget.dataset.noteId, direction);
+  }
 }
 
 async function handleEntrySubmit(event) {
@@ -208,6 +255,7 @@ function openEntryDetail(entry) {
   els.entryDialogTags.innerHTML = (entry.tags || []).map(function (tag) { return "<span>#" + escapeHtml(tag) + "</span>"; }).join("");
   els.entryNoteQuote.value = "";
   els.entryNoteText.value = "";
+  setSelectedNoteType("addendum");
   renderNoteQuotePreview();
   renderEntryNotes(entry);
   if (typeof els.entryDialog.showModal === "function" && !els.entryDialog.open) els.entryDialog.showModal();
@@ -255,7 +303,7 @@ async function saveEntryNote() {
   const noteText = cleanMultiline(els.entryNoteText.value);
   const quote = cleanQuote(els.entryNoteQuote.value || state.pendingNoteQuote);
   if (!noteText && !quote) { setStatus("Select text or write a note first."); return; }
-  const note = { id: createId(), createdAt: new Date().toISOString(), quote: quote, text: noteText || "Highlighted for later." };
+  const note = { id: createId(), createdAt: new Date().toISOString(), type: getSelectedNoteType(), quote: quote, text: noteText || "Highlighted for later." };
   const updated = normalizeEntry(Object.assign({}, entry, { notes: (entry.notes || []).concat(note), updatedAt: new Date().toISOString() }));
   await saveEntry(updated);
   openEntryDetail(updated);
@@ -263,30 +311,86 @@ async function saveEntryNote() {
 }
 
 function renderEntryNotes(entry) {
-  const notes = entry.notes || [];
+  const notes = annotatedNotes(entry);
   if (!els.entryNotesList) return;
   if (!notes.length) {
-    els.entryNotesList.innerHTML = "<div class=\"empty-notes\">No notes yet.</div>";
+    els.entryNotesList.innerHTML = "<div class=\"empty-notes\"><strong>No notes yet.</strong><span>Select text from the preserved page or write an addendum.</span></div>";
     return;
   }
-  els.entryNotesList.innerHTML = notes.slice().sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); }).map(function (note) {
-    const quote = note.quote ? "<blockquote>" + escapeHtml(note.quote) + "</blockquote>" : "";
-    return "<article class=\"entry-note\">" + quote + "<p>" + escapeHtml(note.text) + "</p><time datetime=\"" + escapeHtml(note.createdAt) + "\">" + escapeHtml(formatDateTime(note.createdAt)) + "</time></article>";
+  els.entryNotesList.innerHTML = notes.map(function (note, index) {
+    const type = normalizedNoteType(note.type);
+    const quote = note.quote ? "<blockquote><span>Quoted passage</span>" + escapeHtml(note.quote) + "</blockquote>" : "";
+    const role = note.quote ? " role=\"button\" tabindex=\"0\"" : "";
+    return "<article class=\"entry-note\" data-note-id=\"" + escapeHtml(note.id) + "\" data-note-type=\"" + type + "\" data-note-index=\"" + (index + 1) + "\"" + role + " aria-label=\"Annotation " + (index + 1) + ", " + escapeHtml(NOTE_TYPES[type].label) + "\"><div class=\"entry-note-top\"><span class=\"note-index\">" + (index + 1) + "</span><span class=\"note-type-pill\">" + escapeHtml(NOTE_TYPES[type].label) + "</span></div>" + quote + "<p>" + escapeHtml(note.text) + "</p><time datetime=\"" + escapeHtml(note.createdAt) + "\">" + escapeHtml(formatDateTime(note.createdAt)) + "</time></article>";
   }).join("");
 }
 
 function annotatedBodyHtml(entry) {
   let html = escapeHtml(entry.body || "");
-  (entry.notes || []).filter(function (note) { return note.quote; }).forEach(function (note, index) {
+  annotatedNotes(entry).filter(function (note) { return note.quote; }).forEach(function (note, index) {
     const quote = escapeHtml(note.quote);
     if (!quote) return;
+    const type = normalizedNoteType(note.type);
     const pattern = new RegExp(escapeRegExp(quote));
-    html = html.replace(pattern, "<mark class=\"body-highlight\" title=\"Annotated note " + (index + 1) + "\">" + quote + "</mark>");
+    html = html.replace(pattern, "<mark class=\"body-highlight\" data-note-id=\"" + escapeHtml(note.id) + "\" data-note-type=\"" + type + "\" data-note-index=\"" + (index + 1) + "\" tabindex=\"0\" role=\"button\" title=\"Jump to annotation " + (index + 1) + "\"><span class=\"highlight-index\">" + (index + 1) + "</span>" + quote + "</mark>");
   });
   return html;
 }
 
-function renderAll() { renderLibrary(); renderStats(); renderTrendChart(); renderLocationChart(); renderTagChart(); }
+function annotatedNotes(entry) {
+  return (entry.notes || []).map(normalizeNote).sort(function (a, b) { return new Date(a.createdAt) - new Date(b.createdAt); });
+}
+
+function normalizeNote(note) {
+  return {
+    id: note.id ? String(note.id) : createId(),
+    createdAt: note.createdAt || new Date().toISOString(),
+    type: normalizedNoteType(note.type),
+    quote: cleanQuote(note.quote || "").slice(0, 500),
+    text: cleanMultiline(note.text || note.body || "").slice(0, 1800) || "Highlighted for later."
+  };
+}
+
+function normalizedNoteType(type) {
+  return NOTE_TYPES[type] ? type : "addendum";
+}
+
+function getSelectedNoteType() {
+  const selected = Array.from(els.entryNoteTypes || []).find(function (input) { return input.checked; });
+  return normalizedNoteType(selected ? selected.value : "addendum");
+}
+
+function setSelectedNoteType(type) {
+  const value = normalizedNoteType(type);
+  Array.from(els.entryNoteTypes || []).forEach(function (input) { input.checked = input.value === value; });
+}
+
+function focusAnnotationPair(noteId, direction) {
+  if (!noteId) return;
+  const highlight = els.entryDialogBody ? els.entryDialogBody.querySelector('.body-highlight[data-note-id="' + cssEscape(noteId) + '"]') : null;
+  const note = els.entryNotesList ? els.entryNotesList.querySelector('.entry-note[data-note-id="' + cssEscape(noteId) + '"]') : null;
+  const target = direction === "highlight" ? highlight : note;
+  [highlight, note].forEach(function (item) {
+    if (!item) return;
+    item.classList.add("annotation-active");
+    window.setTimeout(function () { item.classList.remove("annotation-active"); }, 1400);
+  });
+  if (!target) return;
+  target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "center", inline: "nearest" });
+  window.setTimeout(function () { target.focus({ preventScroll: true }); }, prefersReducedMotion() ? 0 : 380);
+}
+
+function animateEntryOpen(target) {
+  if (!target || prefersReducedMotion()) return;
+  target.classList.add("opening");
+  window.setTimeout(function () { target.classList.remove("opening"); }, 620);
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function renderAll() { renderLibrary(); renderStats(); renderObservationCards(); renderTrendChart(); renderLocationChart(); renderTagChart(); }
 function renderLibrary() { const entries = getFilteredEntries(); renderShelf(entries); renderDrawer(entries); applyLibraryView(); }
 
 function renderShelf(entries) {
@@ -335,6 +439,51 @@ function renderStats() {
   els.statsGrid.innerHTML = stats.map(function (stat) { return "<div class=\"stat-tile\"><span>" + escapeHtml(stat[0]) + "</span><strong>" + escapeHtml(String(stat[1])) + "</strong></div>"; }).join("");
 }
 
+function renderObservationCards() {
+  if (!els.observationGrid) return;
+  const entries = visibleEntries();
+  const cards = buildObservationCards(entries);
+  els.observationGrid.innerHTML = cards.map(function (card) {
+    return "<article class=\"observation-card\"><span>" + escapeHtml(card.kicker) + "</span><strong>" + escapeHtml(card.title) + "</strong><p>" + escapeHtml(card.body) + "</p></article>";
+  }).join("");
+}
+
+function buildObservationCards(entries) {
+  if (!entries.length) {
+    return [
+      { kicker: "First signal", title: "No patterns yet", body: "Your observations will appear after a few saved logs." },
+      { kicker: "Private by default", title: "Only this browser", body: "Insights are calculated locally from the entries stored here." }
+    ];
+  }
+  const cards = [];
+  const locationRows = aggregate(entries, function (entry) { return entry.location && entry.location.label ? entry.location.label : "Unplaced"; }).map(function (row) {
+    return { key: row.key, count: row.entries.length, avg: average(row.entries.map(moodScore)) };
+  }).sort(function (a, b) { return b.count - a.count || a.avg - b.avg; });
+  const topLocation = locationRows[0];
+  cards.push({ kicker: "Location", title: topLocation.key, body: topLocation.count + " logs here, average mood " + topLocation.avg.toFixed(1) + "/10." });
+
+  const tagRows = aggregate(entries.flatMap(function (entry) { return (entry.tags || []).map(function (tag) { return { tag: tag, entry: entry }; }); }), function (item) { return item.tag; }).map(function (row) {
+    return { key: row.key, count: row.entries.length, avg: average(row.entries.map(function (item) { return moodScore(item.entry); })) };
+  }).sort(function (a, b) { return b.count - a.count || a.avg - b.avg; });
+  const topTag = tagRows[0];
+  cards.push(topTag ? { kicker: "Tag signal", title: "#" + topTag.key, body: topTag.count + " linked logs, average mood " + topTag.avg.toFixed(1) + "/10." } : { kicker: "Tag signal", title: "No tags yet", body: "Tags will reveal patterns when you start using them." });
+
+  const high = entries.filter(function (entry) { return Number(entry.intensity) >= 8; });
+  const highMood = topItem(high.map(function (entry) { return moodLabel(entry.mood); })) || "None";
+  cards.push({ kicker: "High intensity", title: high.length ? high.length + " strong logs" : "Quiet waters", body: high.length ? "Most often marked " + highMood + "." : "No entries at 8/10 intensity or higher yet." });
+
+  const noted = entries.filter(function (entry) { return entry.notes && entry.notes.length; });
+  cards.push({ kicker: "Revisited", title: noted.length + " annotated logs", body: noted.length ? "Notes are becoming your margin memory." : "Add notes to trace what changed after the moment passed." });
+
+  const recent = entries.slice().sort(function (a, b) { return new Date(a.createdAt) - new Date(b.createdAt); }).slice(-6);
+  const prior = recent.slice(0, 3);
+  const latest = recent.slice(-3);
+  const shift = prior.length && latest.length ? average(latest.map(moodScore)) - average(prior.map(moodScore)) : 0;
+  const direction = shift > 0.35 ? "softening" : shift < -0.35 ? "heavier" : "steady";
+  cards.push({ kicker: "Recent weather", title: direction[0].toUpperCase() + direction.slice(1), body: recent.length >= 4 ? "Your last few logs look " + direction + " compared with the previous few." : "More logs will make the recent trend clearer." });
+  return cards;
+}
+
 function renderTrendChart() {
   const entries = visibleEntries().slice().sort(function (a, b) { return new Date(a.createdAt) - new Date(b.createdAt); });
   if (!entries.length) { els.trendRange.textContent = ""; els.trendChart.innerHTML = miniEmpty("No mood points"); return; }
@@ -370,19 +519,145 @@ function getFilteredEntries() { const query = state.filters.query; return visibl
 function visibleEntries() { return state.entries.filter(function (entry) { return !entry.deletedAt; }).sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); }); }
 function groupByMonth(entries) { const map = new Map(); entries.forEach(function (entry) { const date = new Date(entry.createdAt); const key = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0"); if (!map.has(key)) map.set(key, { key: key, label: date.toLocaleDateString([], { month: "long", year: "numeric" }), entries: [] }); map.get(key).entries.push(entry); }); return Array.from(map.values()).sort(function (a, b) { return b.key.localeCompare(a.key); }); }
 
-async function exportJson() { const payload = await makeBackupPayload(); downloadJson(payload, "harbor-log-" + new Date().toISOString().slice(0, 10) + ".json"); setBackupStatus("Exported."); }
-async function handleImportFile(event) { const file = event.target.files && event.target.files[0]; if (!file) return; try { const payload = JSON.parse(await file.text()); const result = await mergePayload(payload); setBackupStatus("Imported " + result.changed + " changes."); } catch (error) { console.error(error); setBackupStatus("Import failed."); } finally { event.target.value = ""; } }
-function openBackupDialog() { hydrateSettings(); setBackupStatus(""); if (typeof els.backupDialog.showModal === "function") els.backupDialog.showModal(); else els.backupDialog.setAttribute("open", "open"); }
+function openRitualDialog() {
+  if (!els.ritualDialog) return;
+  const prompt = ritualPrompts[Math.floor(Math.random() * ritualPrompts.length)];
+  els.ritualPrompt.textContent = prompt;
+  if (typeof els.ritualDialog.showModal === "function" && !els.ritualDialog.open) els.ritualDialog.showModal();
+  else els.ritualDialog.setAttribute("open", "open");
+}
+
+async function finishRitual(shouldFocus) {
+  if (els.ritualDialog && els.ritualDialog.open) els.ritualDialog.close();
+  else if (els.ritualDialog) els.ritualDialog.removeAttribute("open");
+  if (state.activeRoom === "home") resetForm();
+  await showRoom("write");
+  if (shouldFocus) window.requestAnimationFrame(function () { els.entryBody.focus(); });
+}
+
+function openCommandPalette() {
+  if (!els.commandDialog) return;
+  state.selectedCommandIndex = 0;
+  els.commandSearch.value = "";
+  renderCommandPalette();
+  if (typeof els.commandDialog.showModal === "function" && !els.commandDialog.open) els.commandDialog.showModal();
+  else els.commandDialog.setAttribute("open", "open");
+  window.requestAnimationFrame(function () { els.commandSearch.focus(); });
+}
+
+function closeCommandPalette() {
+  if (!els.commandDialog) return;
+  if (els.commandDialog.open && typeof els.commandDialog.close === "function") els.commandDialog.close();
+  else els.commandDialog.removeAttribute("open");
+}
+
+function renderCommandPalette() {
+  if (!els.commandList) return;
+  const query = cleanText(els.commandSearch.value).toLowerCase();
+  const items = getCommandItems().filter(function (item) {
+    return !query || (item.label + " " + item.kicker + " " + (item.search || "")).toLowerCase().includes(query);
+  });
+  state.commandItems = items;
+  if (state.selectedCommandIndex >= items.length) state.selectedCommandIndex = Math.max(0, items.length - 1);
+  els.commandList.innerHTML = items.length ? items.map(function (item, index) {
+    const active = index === state.selectedCommandIndex ? " active" : "";
+    return "<button class=\"command-item" + active + "\" data-command-index=\"" + index + "\" type=\"button\" role=\"option\" aria-selected=\"" + (index === state.selectedCommandIndex ? "true" : "false") + "\"><span>" + escapeHtml(item.kicker) + "</span><strong>" + escapeHtml(item.label) + "</strong></button>";
+  }).join("") : "<div class=\"command-empty\">No matching command.</div>";
+}
+
+function getCommandItems() {
+  const recent = visibleEntries().slice(0, 5).map(function (entry) {
+    return { id: "entry-" + entry.id, kicker: "Recent log", label: entry.title || defaultTitle(entry.createdAt), action: "open-entry", entryId: entry.id, search: [entry.body, entry.location && entry.location.label, entry.tags && entry.tags.join(" ")].join(" ") };
+  });
+  const tags = aggregate(visibleEntries().flatMap(function (entry) { return entry.tags || []; }), function (tag) { return tag; }).sort(function (a, b) { return b.entries.length - a.entries.length; }).slice(0, 5).map(function (row) {
+    return { id: "tag-" + row.key, kicker: "Tag", label: "#" + row.key, action: "tag", tag: row.key, search: row.key };
+  });
+  return [
+    { id: "new", kicker: "Write", label: "New log", action: "new" },
+    { id: "settle", kicker: "Ritual", label: "Settle before writing", action: "ritual" },
+    { id: "library", kicker: "Room", label: "Enter the library", action: "room", room: "library" },
+    { id: "insights", kicker: "Room", label: "Open mood weather", action: "room", room: "insights" },
+    { id: "search", kicker: "Find", label: "Search logs", action: "search" },
+    { id: "vault", kicker: "Privacy", label: "Open the vault", action: "vault" },
+    { id: "export", kicker: "Backup", label: "Export JSON", action: "export" }
+  ].concat(recent, tags);
+}
+
+function moveCommandSelection(delta) {
+  if (!state.commandItems.length) return;
+  state.selectedCommandIndex = (state.selectedCommandIndex + delta + state.commandItems.length) % state.commandItems.length;
+  renderCommandPalette();
+  const active = els.commandList.querySelector(".command-item.active");
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+async function executeCommand(index) {
+  const item = state.commandItems[index];
+  if (!item) return;
+  closeCommandPalette();
+  if (item.action === "new") { resetForm(); await showRoom("write"); window.requestAnimationFrame(function () { els.entryBody.focus(); }); }
+  if (item.action === "ritual") openRitualDialog();
+  if (item.action === "room") await showRoom(item.room);
+  if (item.action === "search") { await showRoom("library"); window.requestAnimationFrame(function () { els.searchInput.focus(); }); }
+  if (item.action === "vault") openBackupDialog();
+  if (item.action === "export") await exportJson();
+  if (item.action === "open-entry") {
+    const entry = state.entries.find(function (candidate) { return candidate.id === item.entryId; });
+    if (entry) openEntryDetail(entry);
+  }
+  if (item.action === "tag") {
+    await showRoom("library");
+    state.filters.query = item.tag.toLowerCase();
+    els.searchInput.value = item.tag;
+    renderLibrary();
+  }
+}
+
+async function exportJson() {
+  const payload = await makeBackupPayload();
+  downloadJson(payload, "harbor-log-" + new Date().toISOString().slice(0, 10) + ".json");
+  state.settings.lastExport = new Date().toISOString();
+  await writeSettings(state.settings);
+  renderVaultStatus();
+  setBackupStatus("Exported.");
+  setStatus("Exported private JSON.");
+}
+
+async function handleImportFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  try {
+    const payload = JSON.parse(await file.text());
+    const result = await mergePayload(payload);
+    state.settings.lastImport = new Date().toISOString();
+    await writeSettings(state.settings);
+    renderVaultStatus();
+    setBackupStatus("Imported " + result.changed + " changes.");
+  } catch (error) {
+    console.error(error);
+    setBackupStatus("Import failed.");
+  } finally {
+    event.target.value = "";
+  }
+}
+
+function openBackupDialog() {
+  hydrateSettings();
+  setBackupStatus("");
+  renderVaultStatus();
+  if (typeof els.backupDialog.showModal === "function") els.backupDialog.showModal();
+  else els.backupDialog.setAttribute("open", "open");
+}
 function hydrateSettings() { els.googleClientId.value = state.settings.googleClientId || ""; if (state.settings.lastDriveSync) setStatus("Last Drive sync " + formatDateTime(state.settings.lastDriveSync) + "."); }
 async function saveSettingsFromDialog() { state.settings.googleClientId = els.googleClientId.value.trim(); await writeSettings(state.settings); setBackupStatus("Settings saved."); }
 
 async function pushToDrive() {
-  try { await saveSettingsFromDialog(); const token = await requestDriveToken(); const payload = await makeBackupPayload(); const existing = await findDriveFile(token); if (existing) await updateDriveFile(token, existing.id, payload); else await createDriveFile(token, payload); state.settings.lastDriveSync = new Date().toISOString(); await writeSettings(state.settings); renderStats(); setBackupStatus("Backed up to Google Drive."); setStatus("Drive backup " + formatDateTime(state.settings.lastDriveSync) + "."); }
+  try { await saveSettingsFromDialog(); const token = await requestDriveToken(); const payload = await makeBackupPayload(); const existing = await findDriveFile(token); if (existing) await updateDriveFile(token, existing.id, payload); else await createDriveFile(token, payload); state.settings.lastDriveSync = new Date().toISOString(); await writeSettings(state.settings); renderStats(); renderVaultStatus(); setBackupStatus("Backed up to Google Drive."); setStatus("Drive backup " + formatDateTime(state.settings.lastDriveSync) + "."); }
   catch (error) { console.error(error); setBackupStatus(readableError(error)); }
 }
 
 async function pullFromDrive() {
-  try { await saveSettingsFromDialog(); const token = await requestDriveToken(); const existing = await findDriveFile(token); if (!existing) { setBackupStatus("No Drive backup found."); return; } const payload = await downloadDriveFile(token, existing.id); const result = await mergePayload(payload); state.settings.lastDriveSync = new Date().toISOString(); await writeSettings(state.settings); renderStats(); setBackupStatus("Merged " + result.changed + " changes from Drive."); setStatus("Drive merge " + formatDateTime(state.settings.lastDriveSync) + "."); }
+  try { await saveSettingsFromDialog(); const token = await requestDriveToken(); const existing = await findDriveFile(token); if (!existing) { setBackupStatus("No Drive backup found."); return; } const payload = await downloadDriveFile(token, existing.id); const result = await mergePayload(payload); state.settings.lastDriveSync = new Date().toISOString(); await writeSettings(state.settings); renderStats(); renderVaultStatus(); setBackupStatus("Merged " + result.changed + " changes from Drive."); setStatus("Drive merge " + formatDateTime(state.settings.lastDriveSync) + "."); }
   catch (error) { console.error(error); setBackupStatus(readableError(error)); }
 }
 
@@ -410,10 +685,35 @@ async function updateDriveFile(token, fileId, payload) { await driveFetch(token,
 async function downloadDriveFile(token, fileId) { const response = await driveFetch(token, "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(fileId) + "?alt=media"); return response.json(); }
 async function driveFetch(token, url, options) { const requestOptions = options || {}; const response = await fetch(url, Object.assign({}, requestOptions, { headers: Object.assign({}, requestOptions.headers || {}, { Authorization: "Bearer " + token }) })); if (!response.ok) { const message = await response.text(); throw new Error(message || "Drive request failed: " + response.status); } return response; }
 function multipartBody(metadata, payload) { const boundary = "harbor_log_" + createId().replace(/[^a-zA-Z0-9]/g, ""); const value = ["--" + boundary, "Content-Type: application/json; charset=UTF-8", "", JSON.stringify(metadata), "--" + boundary, "Content-Type: application/json", "", JSON.stringify(payload, null, 2), "--" + boundary + "--", ""].join("\r\n"); return { contentType: "multipart/related; boundary=" + boundary, value: value }; }
-async function makeBackupPayload() { return { app: "Harbor Log", schemaVersion: 1, exportedAt: new Date().toISOString(), entries: state.entries, settings: { lastDriveSync: state.settings.lastDriveSync || "", libraryView: state.settings.libraryView || "shelf" } }; }
+async function makeBackupPayload() { return { app: "Harbor Log", schemaVersion: 1, exportedAt: new Date().toISOString(), entries: state.entries, settings: { lastDriveSync: state.settings.lastDriveSync || "", lastExport: state.settings.lastExport || "", lastImport: state.settings.lastImport || "", libraryView: state.settings.libraryView || "shelf" } }; }
 async function mergePayload(payload) { if (!payload || !Array.isArray(payload.entries)) throw new Error("That file is not a Harbor Log backup."); let changed = 0; const byId = new Map(state.entries.map(function (entry) { return [entry.id, entry]; })); payload.entries.forEach(function (incoming) { if (!incoming.id || !incoming.updatedAt) return; const current = byId.get(incoming.id); if (!current || new Date(incoming.updatedAt) > new Date(current.updatedAt || 0)) { byId.set(incoming.id, normalizeEntry(incoming)); changed += 1; } }); state.entries = Array.from(byId.values()); await replaceAllEntries(state.entries); renderAll(); return { changed: changed }; }
 function normalizeEntry(entry) { return { id: String(entry.id), createdAt: entry.createdAt || new Date().toISOString(), updatedAt: entry.updatedAt || new Date().toISOString(), deletedAt: entry.deletedAt || "", title: entry.title || "Untitled", body: entry.body || "", mood: moods[entry.mood] ? entry.mood : "steady", intensity: Math.min(10, Math.max(1, Number(entry.intensity) || 5)), tags: Array.isArray(entry.tags) ? entry.tags.map(cleanText).filter(Boolean) : [], people: Array.isArray(entry.people) ? entry.people.map(cleanText).filter(Boolean) : [], notes: normalizeNotes(entry.notes), location: { label: entry.location && entry.location.label ? entry.location.label : "Unplaced", lat: entry.location ? entry.location.lat : null, lng: entry.location ? entry.location.lng : null, accuracy: entry.location ? entry.location.accuracy : null, source: entry.location && entry.location.source ? entry.location.source : "manual" }, timeZone: entry.timeZone || "", utcOffsetMinutes: Number.isFinite(entry.utcOffsetMinutes) ? entry.utcOffsetMinutes : new Date(entry.createdAt || Date.now()).getTimezoneOffset() }; }
-async function requestPersistentStorage() { if (!navigator.storage || !navigator.storage.persist) { setBackupStatus("Persistent storage is unavailable here."); return; } const persisted = await navigator.storage.persist(); setBackupStatus(persisted ? "Browser storage protected." : "Browser storage unchanged."); }
+
+async function requestPersistentStorage() {
+  if (!navigator.storage || !navigator.storage.persist) { setBackupStatus("Persistent storage is unavailable here."); return; }
+  const persisted = await navigator.storage.persist();
+  renderVaultStatus();
+  setBackupStatus(persisted ? "Browser storage protected." : "Browser storage unchanged.");
+}
+
+function renderVaultStatus() {
+  if (!els.vaultStatusGrid) return;
+  const rows = [
+    { label: "Local logs", value: String(visibleEntries().length), detail: "Saved in this browser" },
+    { label: "Drive sync", value: state.settings.lastDriveSync ? shortDate(state.settings.lastDriveSync) : "Off", detail: "Optional private app folder" },
+    { label: "Last export", value: state.settings.lastExport ? shortDate(state.settings.lastExport) : "Not yet", detail: "User-controlled JSON" },
+    { label: "Last import", value: state.settings.lastImport ? shortDate(state.settings.lastImport) : "Not yet", detail: "Merged into local storage" }
+  ];
+  els.vaultStatusGrid.innerHTML = rows.map(function (row) {
+    return "<div class=\"vault-tile\"><span>" + escapeHtml(row.label) + "</span><strong>" + escapeHtml(row.value) + "</strong><small>" + escapeHtml(row.detail) + "</small></div>";
+  }).join("");
+  if (navigator.storage && navigator.storage.persisted) {
+    navigator.storage.persisted().then(function (persisted) {
+      const first = els.vaultStatusGrid.querySelector(".vault-tile small");
+      if (first) first.textContent = persisted ? "Protected by browser storage" : "Saved locally, protection available";
+    });
+  }
+}
 
 function openDatabase() { return new Promise(function (resolve, reject) { if (!window.indexedDB) { reject(new Error("IndexedDB is not available.")); return; } const request = indexedDB.open(DB_NAME, DB_VERSION); request.onupgradeneeded = function () { const db = request.result; if (!db.objectStoreNames.contains(ENTRY_STORE)) { const entries = db.createObjectStore(ENTRY_STORE, { keyPath: "id" }); entries.createIndex("createdAt", "createdAt"); entries.createIndex("updatedAt", "updatedAt"); } if (!db.objectStoreNames.contains(SETTINGS_STORE)) db.createObjectStore(SETTINGS_STORE, { keyPath: "id" }); }; request.onsuccess = function () { resolve(request.result); }; request.onerror = function () { reject(request.error); }; }); }
 function transaction(storeName, mode, callback) { return new Promise(function (resolve, reject) { const tx = state.db.transaction(storeName, mode); const store = tx.objectStore(storeName); callback(store); tx.oncomplete = function () { resolve(); }; tx.onerror = function () { reject(tx.error); }; tx.onabort = function () { reject(tx.error); }; }); }
@@ -432,7 +732,7 @@ function parseList(value) { return Array.from(new Set(value.split(",").map(clean
 function cleanText(value) { return String(value || "").trim().replace(/\s+/g, " "); }
 function cleanMultiline(value) { return String(value || "").replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); }
 function cleanQuote(value) { return cleanMultiline(value).replace(/\s+/g, " "); }
-function normalizeNotes(notes) { return Array.isArray(notes) ? notes.map(function (note) { return { id: note.id ? String(note.id) : createId(), createdAt: note.createdAt || new Date().toISOString(), quote: cleanQuote(note.quote || "").slice(0, 500), text: cleanMultiline(note.text || note.body || "").slice(0, 1800) || "Highlighted for later." }; }).filter(function (note) { return note.quote || note.text; }) : []; }
+function normalizeNotes(notes) { return Array.isArray(notes) ? notes.map(normalizeNote).filter(function (note) { return note.quote || note.text; }) : []; }
 function createId() { return crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2); }
 function roundCoord(value) { return Math.round(value * 100000) / 100000; }
 function moodScore(entry) { const base = moods[entry.mood] ? moods[entry.mood].score : 5; const intensity = Number(entry.intensity) || 5; return Math.min(10, Math.max(1, base * 0.65 + intensity * 0.35)); }
@@ -452,6 +752,7 @@ function emptyNode() { return els.emptyTemplate.content.firstElementChild.cloneN
 function miniEmpty(message) { return "<div class=\"empty-state\" style=\"min-height:180px\"><h3>" + escapeHtml(message) + "</h3></div>"; }
 function escapeHtml(value) { return String(value == null ? "" : value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
 function escapeRegExp(value) { return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function cssEscape(value) { return window.CSS && CSS.escape ? CSS.escape(value) : String(value).replace(/"/g, '\\"').replace(/\\/g, "\\\\"); }
 function softColor(color) { return "color-mix(in srgb, " + color + " 18%, #fffaf0)"; }
 function downloadJson(payload, filename) { const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); URL.revokeObjectURL(url); }
 function readableError(error) { const message = error && error.message ? error.message : String(error); if (message.includes("invalid_client")) return "Google rejected the client ID."; if (message.includes("popup")) return "Google sign-in was blocked."; if (message.length > 160) return "The Drive request failed."; return message; }

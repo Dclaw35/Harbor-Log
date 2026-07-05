@@ -1,4 +1,4 @@
-const CACHE_NAME = "harbor-log-v5";
+const CACHE_NAME = "harbor-log-v7";
 const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./assets/harbor-log-icon-32.png", "./assets/harbor-log-icon-192.png", "./assets/harbor-log-icon-512.png", "./assets/harbor-cinematic-bg.png", "./assets/library-room-bg.png"];
 
 self.addEventListener("install", function (event) {
