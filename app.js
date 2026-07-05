@@ -321,7 +321,7 @@ function renderEntryNotes(entry) {
     const type = normalizedNoteType(note.type);
     const quote = note.quote ? "<blockquote><span>Quoted passage</span>" + escapeHtml(note.quote) + "</blockquote>" : "";
     const role = note.quote ? " role=\"button\" tabindex=\"0\"" : "";
-    return "<article class=\"entry-note\" data-note-id=\"" + escapeHtml(note.id) + "\" data-note-type=\"" + type + "\" data-note-index=\"" + (index + 1) + "\"" + role + " aria-label=\"Annotation " + (index + 1) + ", " + escapeHtml(NOTE_TYPES[type].label) + "\"><div class=\"entry-note-top\"><span class=\"note-index\">" + (index + 1) + "</span><span class=\"note-type-pill\">" + escapeHtml(NOTE_TYPES[type].label) + "</span></div>" + quote + "<p>" + escapeHtml(note.text) + "</p><time datetime=\"" + escapeHtml(note.createdAt) + "\">" + escapeHtml(formatDateTime(note.createdAt)) + "</time></article>";
+    return "<article class=\"entry-note\" data-note-id=\"" + escapeHtml(note.id) + "\" data-note-type=\"" + type + "\" data-note-index=\"" + (index + 1) + "\" style=\"--item-delay:" + (index * 48) + "ms\"" + role + " aria-label=\"Annotation " + (index + 1) + ", " + escapeHtml(NOTE_TYPES[type].label) + "\"><div class=\"entry-note-top\"><span class=\"note-index\">" + (index + 1) + "</span><span class=\"note-type-pill\">" + escapeHtml(NOTE_TYPES[type].label) + "</span></div>" + quote + "<p>" + escapeHtml(note.text) + "</p><time datetime=\"" + escapeHtml(note.createdAt) + "\">" + escapeHtml(formatDateTime(note.createdAt)) + "</time></article>";
   }).join("");
 }
 
@@ -401,7 +401,7 @@ function renderShelf(entries) {
     const title = document.createElement("div"); title.className = "shelf-title"; title.innerHTML = "<h3>" + escapeHtml(group.label) + "</h3><span>" + group.entries.length + " logs</span>";
     const row = document.createElement("div"); row.className = "book-row";
     group.entries.forEach(function (entry, index) {
-      const button = document.createElement("button"); button.type = "button"; button.className = "book"; button.dataset.entryId = entry.id; button.dataset.mood = entry.mood; button.style.setProperty("--book-color", getEntryColor(entry, index)); button.style.setProperty("--book-height", 122 + Math.min(72, entry.intensity * 7) + "px"); button.innerHTML = "<span class=\"book-title\">" + escapeHtml(entry.title) + "</span><span class=\"book-meta\">" + escapeHtml(moodLabel(entry.mood)) + "</span>"; row.append(button);
+      const button = document.createElement("button"); button.type = "button"; button.className = "book"; button.dataset.entryId = entry.id; button.dataset.mood = entry.mood; button.style.setProperty("--book-color", getEntryColor(entry, index)); button.style.setProperty("--book-height", 122 + Math.min(72, entry.intensity * 7) + "px"); button.style.setProperty("--item-delay", Math.min(index, 9) * 48 + "ms"); button.innerHTML = "<span class=\"book-title\">" + escapeHtml(entry.title) + "</span><span class=\"book-meta\">" + escapeHtml(moodLabel(entry.mood)) + "</span>"; row.append(button);
     });
     shelf.append(title, row); els.shelfView.append(shelf);
   });
@@ -413,7 +413,7 @@ function renderDrawer(entries) {
   groupByMonth(entries).forEach(function (group) {
     const section = document.createElement("section"); section.className = "drawer-group";
     const label = document.createElement("div"); label.className = "drawer-label"; label.innerHTML = "<h3>" + escapeHtml(group.label) + "</h3><span>" + group.entries.length + "</span>";
-    const stack = document.createElement("div"); stack.className = "entry-stack"; group.entries.forEach(function (entry) { stack.append(entryCard(entry)); });
+    const stack = document.createElement("div"); stack.className = "entry-stack"; group.entries.forEach(function (entry, index) { const card = entryCard(entry); card.style.setProperty("--item-delay", Math.min(index, 9) * 44 + "ms"); stack.append(card); });
     section.append(label, stack); els.drawerView.append(section);
   });
 }
@@ -436,15 +436,15 @@ function renderStats() {
   const places = new Set(entries.map(function (entry) { return entry.location && entry.location.label ? entry.location.label : "Unplaced"; }));
   const sync = state.settings.lastDriveSync ? shortDate(state.settings.lastDriveSync) : "Not yet";
   const stats = [["Logs", entries.length], ["This week", thisWeek], ["Mood avg", avg], ["Top tag", commonTag], ["Places", places.size || 0], ["Drive sync", sync]];
-  els.statsGrid.innerHTML = stats.map(function (stat) { return "<div class=\"stat-tile\"><span>" + escapeHtml(stat[0]) + "</span><strong>" + escapeHtml(String(stat[1])) + "</strong></div>"; }).join("");
+  els.statsGrid.innerHTML = stats.map(function (stat, index) { return "<div class=\"stat-tile\" style=\"--item-delay:" + (index * 58) + "ms\"><span>" + escapeHtml(stat[0]) + "</span><strong>" + escapeHtml(String(stat[1])) + "</strong></div>"; }).join("");
 }
 
 function renderObservationCards() {
   if (!els.observationGrid) return;
   const entries = visibleEntries();
   const cards = buildObservationCards(entries);
-  els.observationGrid.innerHTML = cards.map(function (card) {
-    return "<article class=\"observation-card\"><span>" + escapeHtml(card.kicker) + "</span><strong>" + escapeHtml(card.title) + "</strong><p>" + escapeHtml(card.body) + "</p></article>";
+  els.observationGrid.innerHTML = cards.map(function (card, index) {
+    return "<article class=\"observation-card\" style=\"--item-delay:" + (index * 70) + "ms\"><span>" + escapeHtml(card.kicker) + "</span><strong>" + escapeHtml(card.title) + "</strong><p>" + escapeHtml(card.body) + "</p></article>";
   }).join("");
 }
 
@@ -494,14 +494,14 @@ function renderTrendChart() {
   const dots = points.map(function (point) { return "<circle cx=\"" + point.x + "\" cy=\"" + point.y + "\" r=\"5.5\" fill=\"" + moodColor(point.entry.mood) + "\"><title>" + escapeHtml(point.entry.title) + ": " + escapeHtml(moodLabel(point.entry.mood)) + "</title></circle>"; }).join("");
   const ticks = [1, 3, 5, 7, 9].map(function (tick) { const y = height - padding - (tick - 1) / 9 * (height - padding * 2); return "<line x1=\"" + padding + "\" x2=\"" + (width - padding) + "\" y1=\"" + y + "\" y2=\"" + y + "\" stroke=\"rgba(22,36,42,.12)\"/><text x=\"8\" y=\"" + (y + 4) + "\" font-size=\"11\" fill=\"#64737a\">" + tick + "</text>"; }).join("");
   els.trendRange.textContent = entries.length === 1 ? shortDate(entries[0].createdAt) : shortDate(entries[0].createdAt) + " to " + shortDate(entries[entries.length - 1].createdAt);
-  els.trendChart.innerHTML = "<svg viewBox=\"0 0 " + width + " " + height + "\" role=\"img\" aria-label=\"Mood over time chart\"><defs><linearGradient id=\"trendFill\" x1=\"0\" x2=\"0\" y1=\"0\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#466c86\" stop-opacity=\"0.24\"/><stop offset=\"100%\" stop-color=\"#b58535\" stop-opacity=\"0.05\"/></linearGradient></defs>" + ticks + "<path d=\"" + area + "\" fill=\"url(#trendFill)\"/><path d=\"" + path + "\" fill=\"none\" stroke=\"#153f46\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>" + dots + "</svg>";
+  els.trendChart.innerHTML = "<svg viewBox=\"0 0 " + width + " " + height + "\" role=\"img\" aria-label=\"Mood over time chart\"><defs><linearGradient id=\"trendFill\" x1=\"0\" x2=\"0\" y1=\"0\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#466c86\" stop-opacity=\"0.24\"/><stop offset=\"100%\" stop-color=\"#b58535\" stop-opacity=\"0.05\"/></linearGradient></defs>" + ticks + "<path class=\"trend-area\" d=\"" + area + "\" fill=\"url(#trendFill)\"/><path class=\"trend-line\" d=\"" + path + "\" fill=\"none\" stroke=\"#153f46\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>" + dots.replace(/<circle/g, "<circle class=\"trend-dot\"") + "</svg>";
 }
 
 function renderLocationChart() {
   const entries = visibleEntries();
   if (!entries.length) { els.locationChart.innerHTML = miniEmpty("No locations"); return; }
   const rows = aggregate(entries, function (entry) { return entry.location && entry.location.label ? entry.location.label : "Unplaced"; }).map(function (item) { return Object.assign({}, item, { avg: average(item.entries.map(moodScore)) }); }).sort(function (a, b) { return b.entries.length - a.entries.length; }).slice(0, 8);
-  els.locationChart.innerHTML = rows.map(function (row, index) { const percent = Math.max(7, row.avg / 10 * 100); const color = bookPalette[index % bookPalette.length]; return "<div class=\"bar-row\"><span>" + escapeHtml(row.key) + "</span><div class=\"bar-track\"><div class=\"bar-fill\" style=\"width:" + percent + "%;--bar-color:" + color + "\"></div></div><span>" + row.avg.toFixed(1) + "</span></div>"; }).join("");
+  els.locationChart.innerHTML = rows.map(function (row, index) { const percent = Math.max(7, row.avg / 10 * 100); const color = bookPalette[index % bookPalette.length]; return "<div class=\"bar-row\" style=\"--item-delay:" + (index * 54) + "ms\"><span>" + escapeHtml(row.key) + "</span><div class=\"bar-track\"><div class=\"bar-fill\" style=\"width:" + percent + "%;--bar-color:" + color + ";--bar-delay:" + (index * 54) + "ms\"></div></div><span>" + row.avg.toFixed(1) + "</span></div>"; }).join("");
 }
 
 function renderTagChart() {
@@ -509,7 +509,7 @@ function renderTagChart() {
   visibleEntries().forEach(function (entry) { (entry.tags || []).forEach(function (tag) { items.push({ tag: tag, entry: entry }); }); });
   if (!items.length) { els.tagChart.innerHTML = miniEmpty("No tags"); return; }
   const rows = aggregate(items, function (item) { return item.tag; }).map(function (item) { return { key: item.key, count: item.entries.length, avg: average(item.entries.map(function (itemEntry) { return moodScore(itemEntry.entry); })) }; }).sort(function (a, b) { return b.count - a.count || b.avg - a.avg; }).slice(0, 18);
-  els.tagChart.innerHTML = rows.map(function (row, index) { const size = 0.76 + Math.min(0.28, row.count * 0.035); const bg = softColor(bookPalette[index % bookPalette.length]); return "<div class=\"tag-bubble\" style=\"font-size:" + size + "rem;--bubble-bg:" + bg + "\">#" + escapeHtml(row.key) + "<span>" + row.count + " / " + row.avg.toFixed(1) + "</span></div>"; }).join("");
+  els.tagChart.innerHTML = rows.map(function (row, index) { const size = 0.76 + Math.min(0.28, row.count * 0.035); const bg = softColor(bookPalette[index % bookPalette.length]); return "<div class=\"tag-bubble\" style=\"font-size:" + size + "rem;--bubble-bg:" + bg + ";--item-delay:" + (index * 42) + "ms\">#" + escapeHtml(row.key) + "<span>" + row.count + " / " + row.avg.toFixed(1) + "</span></div>"; }).join("");
 }
 
 function switchLibraryView(view) { state.settings.libraryView = view; writeSettings(state.settings); applyLibraryView(); }
@@ -704,8 +704,8 @@ function renderVaultStatus() {
     { label: "Last export", value: state.settings.lastExport ? shortDate(state.settings.lastExport) : "Not yet", detail: "User-controlled JSON" },
     { label: "Last import", value: state.settings.lastImport ? shortDate(state.settings.lastImport) : "Not yet", detail: "Merged into local storage" }
   ];
-  els.vaultStatusGrid.innerHTML = rows.map(function (row) {
-    return "<div class=\"vault-tile\"><span>" + escapeHtml(row.label) + "</span><strong>" + escapeHtml(row.value) + "</strong><small>" + escapeHtml(row.detail) + "</small></div>";
+  els.vaultStatusGrid.innerHTML = rows.map(function (row, index) {
+    return "<div class=\"vault-tile\" style=\"--item-delay:" + (index * 72) + "ms\"><span>" + escapeHtml(row.label) + "</span><strong>" + escapeHtml(row.value) + "</strong><small>" + escapeHtml(row.detail) + "</small></div>";
   }).join("");
   if (navigator.storage && navigator.storage.persisted) {
     navigator.storage.persisted().then(function (persisted) {
